@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inclined Plane with Friction – Limiting Equilibrium</title>
+
+<!-- MathJax -->
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']]
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+<style>
+body {
+  font-family: Segoe UI, Arial, sans-serif;
+  max-width: 900px;
+  margin: auto;
+  padding: 30px;
+  background: #f9f9f9;
+}
+h1 {
+  text-align: center;
+  border-bottom: 2px solid #333;
+  padding-bottom: 10px;
+}
+.problem-card {
+  background: white;
+  padding: 25px;
+  margin-bottom: 35px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.question-text {
+  font-size: 1.1em;
+  margin-bottom: 15px;
+}
+.figure-box {
+  text-align: center;
+  margin: 20px 0;
+  padding: 10px;
+  border: 1px dashed #999;
+  background: #fafafa;
+}
+.figure-box img {
+  max-width: 100%;
+  height: auto;
+}
+.nav-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.nav-tabs button {
+  padding: 8px 14px;
+  border: none;
+  background: #e0e0e0;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.nav-tabs button.active {
+  background: #333;
+  color: white;
+}
+.content-panel {
+  display: none;
+  padding: 15px;
+  margin-top: 10px;
+  border-left: 4px solid #333;
+  background: #fafafa;
+}
+.content-panel.active {
+  display: block;
+}
+.mistake-panel {
+  border-left-color: #c0392b;
+}
+.simulation-box {
+  margin-top: 15px;
+  padding: 12px;
+  border: 2px dashed #0066cc;
+  background: #eef5ff;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Laws of Motion – Friction on Inclined Plane</h1>
+
+<div class="problem-card" id="problem">
+
+<!-- PROBLEM STATEMENT -->
+<div class="question-text">
+<strong>(2019, 9 Jan-A)</strong><br><br>
+A block of mass $10\,\text{kg}$ is kept on a rough inclined plane as shown in the figure.
+A force of $3\,\text{N}$ is applied on the block up the plane.
+The coefficient of static friction between the plane and the block is $\mu = 0.6$.
+<br><br>
+What should be the <strong>minimum value of force $P$</strong>, such that the block does not move downward?
+<br><br>
+$(g = 10\,\text{m s}^{-2})$
+</div>
+
+<!-- PROBLEM FIGURE PLACEHOLDER -->
+<div class="figure-box">
+<img src="LOM_Friction.png" alt="Inclined plane with forces">
+</div>
+
+<!-- NAVIGATION -->
+<div class="nav-tabs">
+<button onclick="showTab('hint',this)">Hint</button>
+<button onclick="showTab('short',this)">Short Solution</button>
+<button onclick="showTab('conv',this)">Conventional Solution</button>
+</div>
+
+<!-- HINT -->
+<div id="hint" class="content-panel">
+The phrase “minimum value of force $P$, such that the block doesn’t move downward”
+implies a <strong>limiting equilibrium</strong> condition.<br>
+The block is just about to move downward, remains at rest, and friction therefore acts
+<strong>up the plane with maximum magnitude</strong>.
+</div>
+
+<!-- SHORT SOLUTION -->
+<div id="short" class="content-panel">
+First consider the case when $P = 0$.<br>
+The component of gravitational force down the plane exceeds the maximum possible
+static friction, so the block accelerates downward.<br>
+
+To just prevent this motion, an additional force must be applied upward.
+Since the required force is minimum, friction must already be at its limiting value.
+Hence, the applied force must just balance the excess of
+$m g \sin\theta$ over $\mu m g \cos\theta$, after accounting for the given $3\,\text{N}$ force.
+</div>
+
+<!-- CONVENTIONAL SOLUTION -->
+<div id="conv" class="content-panel">
+
+<p><strong>Step 1: Forces and limiting condition</strong></p>
+
+<p>
+The block is on the verge of sliding downward, so friction acts upward with maximum value:
+</p>
+
+\[
+f_{\max} = \mu N
+\]
+
+\[
+N = mg\cos45^\circ
+\]
+
+\[
+\text{Component of weight down the plane} = mg\sin45^\circ
+\]
+
+<p><strong>Step 2: Force balance along the plane</strong></p>
+
+\[
+P + 3 + \mu mg\cos45^\circ = mg\sin45^\circ
+\]
+
+<p><strong>Step 3: Substitution</strong></p>
+
+\[
+P + 3 + 0.6 \times 10 \times 10 \times \frac{1}{\sqrt{2}}
+= 10 \times 10 \times \frac{1}{\sqrt{2}}
+\]
+
+\[
+P + 3 = \frac{40}{\sqrt{2}} = 20\sqrt{2}
+\]
+
+\[
+P = 20\sqrt{2} - 3
+\]
+
+<p><strong>Final Answer:</strong></p>
+
+\[
+\boxed{P_{\min} = 20\sqrt{2} - 3\ \text{N}}
+\]
+
+<!-- CONVENTIONAL SOLUTION FIGURE PLACEHOLDER -->
+<div class="figure-box">
+<img src="LOM_Friction_Solu.png" alt="Free body diagram">
+</div>
+
+</div>
+
+<!-- SIMULATION PLACEHOLDER -->
+<div class="simulation-box">
+<p><strong>Interactive Simulation</strong></p>
+<p>
+<a href="LOMFrictionSim.html" target="_blank">
+Open Simulation
+</a>
+</p>
+</div>
+
+</div>
+
+<script>
+function showTab(type, btn){
+  const panels = document.querySelectorAll('.content-panel');
+  const buttons = document.querySelectorAll('.nav-tabs button');
+  panels.forEach(p => p.classList.remove('active'));
+  buttons.forEach(b => b.classList.remove('active'));
+  document.getElementById(type).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+
+</body>
+</html>
