@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vertical Projection Physics Lab</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            display: grid; 
+            grid-template-columns: 280px 1fr 500px; 
+            height: 100vh; 
+            margin: 0; 
+            background: #f4f7f6; 
+            overflow: hidden; 
+        }
+        
+        /* Left Panel */
+        #left-panel { background: #ffffff; padding: 25px; border-right: 1px solid #d1d1d1; display: flex; flex-direction: column; gap: 15px; box-shadow: 2px 0 5px rgba(0,0,0,0.05); z-index: 10; }
+        
+        /* Middle Panel (Canvas) */
+        #sim-container { background: white; border-right: 1px solid #eee; position: relative; }
+        #simCanvas { width: 100%; height: 100%; }
+
+        /* Right Panel (Graph + Questions) */
+        #right-panel { background: #fafafa; display: flex; flex-direction: column; border-left: 1px solid #ddd; height: 100%; }
+        #graph-area { flex: 1; padding: 15px; background: #fff; border-bottom: 1px solid #eee; min-height: 300px; }
+        #inference-panel { flex: 1; padding: 25px; display: flex; flex-direction: column; background: #fff; }
+        
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 0.9em; color: #333; }
+        
+        button { cursor: pointer; border: none; border-radius: 4px; transition: 0.2s; font-weight: bold; }
+        
+        /* Action Buttons */
+        .btn-action { padding: 10px 15px; background: #3498db; color: white; width: 100%; margin-bottom: 5px; }
+        .btn-action:hover { background: #2980b9; }
+        #reset-btn { background: #e74c3c; }
+        #reset-btn:hover { background: #c0392b; }
+
+        /* Triangular Navigation Buttons */
+        .nav-btn-container { display: flex; gap: 30px; justify-content: center; margin-top: auto; padding-top: 20px; }
+        .nav-btn { 
+            background: #34495e; 
+            color: white; 
+            width: 70px; 
+            height: 45px; 
+            font-size: 1.5rem; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            border-radius: 8px;
+        }
+        .nav-btn:hover { background: #2c3e50; transform: scale(1.05); }
+
+        /* Questions Box Styling */
+        #inference-box { background: #fdf9e1; padding: 20px; border-radius: 4px; border-left: 5px solid #f1c40f; min-height: 120px; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); color: #2c3e50; line-height: 1.6; font-size: 1.05em; }
+        #inference-header { font-weight: bold; color: #7f8c8d; text-transform: uppercase; font-size: 0.85em; margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        
+        .stats { font-family: 'Courier New', Courier, monospace; background: #eef2f3; padding: 10px; border-radius: 4px; margin-top: 10px; font-weight: bold; font-size: 1.1em; }
+    </style>
+</head>
+<body>
+
+<div id="left-panel">
+    <h2 style="margin-top:0; color: #2c3e50;">Controls</h2>
+    <div class="control-group"><b>g = 10 m/s² (Down)</b></div>
+    <hr>
+    <div class="control-group">
+        <label>Initial Velocity (u): <span id="u-val">25</span> m/s</label>
+        <input type="range" id="u-slider" min="5" max="30" step="5" value="25" style="width:100%">
+    </div>
+    <div class="control-group">
+        <label>Play Speed</label>
+        <select id="speed-select" style="width:100%; padding: 5px;">
+            <option value="1">1.0x (Real-time)</option>
+            <option value="0.5">0.5x (Slow-mo)</option>
+            <option value="0.1">0.1x (Super Slow)</option>
+        </select>
+    </div>
+    <button id="snapshot-btn" class="btn-action" style="background:#8e44ad;">Snapshot (+1s Step)</button>
+    <hr>
+    <div class="control-group" style="display: flex; gap: 10px;">
+        <button id="play-btn" class="btn-action" style="flex:1">Play</button>
+        <button id="reset-btn" class="btn-action" style="flex:1">Reset</button>
+    </div>
+    <div class="stats">
+        Time: <b id="time-disp">0.0</b> s<br>
+        Height (h): <b id="h-disp">0.0</b> m
+    </div>
+</div>
+
+<div id="sim-container">
+    <canvas id="simCanvas"></canvas>
+</div>
+
+<div id="right-panel">
+    <div id="graph-area">
+        <canvas id="vGraph"></canvas>
+    </div>
+    <div id="inference-panel">
+        <div>
+            <div id="inference-header">Observe and Infer</div>
+            <div id="inference-box">
+                <p id="inference-text"></p>
+            </div>
+        </div>
+        <div class="nav-btn-container">
+            <button id="prev-inf" class="nav-btn" title="Previous Question">&#9664;</button>
+            <button id="next-inf" class="nav-btn" title="Next Question">&#9654;</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const uSlider = document.getElementById('u-slider');
+    const uVal = document.getElementById('u-val');
+    const timeDisp = document.getElementById('time-disp');
+    const hDisp = document.getElementById('h-disp');
+    
+    let u = 25, g = 10, t = 0, isPlaying = false, snapshots = [];
+    let lastTimestamp = null, hasHitGround = false;
+
+    const questions = [
+        "1. Observe that the descent is a video copy of ascent played in reverse.",
+        "2. What is displacement in the last second of ascent? Does it depend upon the velocity of projection?",
+        "3. Verify that average velocity during any time interval is the mean of initial and final velocity.",
+        "4. Study the difference between displacement and distance travelled from the simulation and v-t graph.",
+        "5. Set the velocity of projection to 25 m/s and observe displacement during 3rd second. Is there a logical inference that can be drawn?"
+    ];
+    let currentQ = 0;
+
+    const vCtx = document.getElementById('vGraph').getContext('2d');
+    const vChart = new Chart(vCtx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: 'Velocity (m/s)',
+                data: [],
+                borderColor: '#e67e22',
+                backgroundColor: '#e67e22',
+                pointRadius: 3,
+                borderWidth: 2,
+                tension: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'linear', min: 0, max: 6,
+                    ticks: { stepSize: 1 },
+                    title: { display: true, text: 'Time (s)', font: { weight: 'bold', size: 14 } },
+                    grid: { color: '#ecf0f1' }
+                },
+                y: {
+                    min: -35, max: 35,
+                    title: { display: true, text: 'Velocity (m/s)', font: { weight: 'bold', size: 14 } },
+                    grid: {
+                        color: (context) => context.tick.value === 0 ? '#000' : '#ecf0f1',
+                        lineWidth: (context) => context.tick.value === 0 ? 2 : 1
+                    }
+                }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    function drawArrow(x, y, length, color, label) {
+        if (Math.abs(length) < 2) return; 
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y - length);
+        ctx.stroke();
+
+        const headlen = 10;
+        const angle = length > 0 ? -Math.PI/2 : Math.PI/2;
+        ctx.beginPath();
+        ctx.moveTo(x, y - length);
+        ctx.lineTo(x - headlen * Math.cos(angle - Math.PI/6), y - length - headlen * Math.sin(angle - Math.PI/6));
+        ctx.lineTo(x - headlen * Math.cos(angle + Math.PI/6), y - length - headlen * Math.sin(angle + Math.PI/6));
+        ctx.fill();
+        ctx.font = "bold 14px Arial";
+        ctx.fillText(label, x + 10, y - length);
+    }
+
+    function init() {
+        resizeCanvas();
+        updateInference();
+        resetSim();
+        window.addEventListener('resize', resizeCanvas);
+    }
+
+    function resizeCanvas() {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+        draw();
+    }
+
+    function resetSim() {
+        t = 0; isPlaying = false; snapshots = []; lastTimestamp = null; hasHitGround = false;
+        vChart.data.datasets[0].data = [];
+        snapshots.push({t: 0, h: 0});
+        vChart.data.datasets[0].data.push({x: 0, y: u});
+        vChart.update();
+        document.getElementById('play-btn').innerText = "Play";
+        draw();
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const groundY = canvas.height - 100;
+        const scale = (canvas.height - 200) / 50; 
+
+        // Grid
+        ctx.setLineDash([5, 5]); ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        for(let i=0; i<=50; i+=5) {
+            let y = groundY - (i * scale);
+            ctx.moveTo(70, y); ctx.lineTo(canvas.width - 30, y);
+            ctx.fillStyle = "#95a5a6"; ctx.font = "12px Arial";
+            ctx.fillText(i + "m", 30, y + 5);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Axis
+        ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(70, groundY + 20); ctx.lineTo(70, 50); ctx.stroke();
+        ctx.fillStyle = "#2c3e50"; ctx.fillText("+h", 50, 55);
+
+        // Ground
+        ctx.beginPath(); ctx.moveTo(60, groundY); ctx.lineTo(canvas.width - 20, groundY); ctx.stroke();
+
+        let h = u*t - 0.5*g*t*t;
+        let v = u - g*t;
+        
+        if (h <= 0 && t > 0) { h = 0; v = 0; isPlaying = false; hasHitGround = true; document.getElementById('play-btn').innerText = "Play"; }
+        
+        hDisp.innerText = h.toFixed(1);
+        timeDisp.innerText = t.toFixed(1);
+
+        const ballY = groundY - (h * scale);
+        const ballX = canvas.width / 2;
+
+        snapshots.forEach(s => {
+            ctx.fillStyle = "rgba(142, 68, 173, 0.15)";
+            ctx.beginPath(); ctx.arc(ballX, groundY - (s.h * scale), 8, 0, Math.PI*2); ctx.fill();
+        });
+
+        if (!hasHitGround) {
+            drawArrow(ballX + 35, ballY, v * 2.5, "#27ae60", "v");
+            drawArrow(ballX - 35, ballY, -g * 4, "#c0392b", "g");
+        } else {
+            ctx.fillStyle = "rgba(231, 76, 60, 0.9)";
+            ctx.fillRect(ballX - 120, groundY + 30, 240, 40);
+            ctx.fillStyle = "white";
+            ctx.font = "bold 14px Segoe UI";
+            ctx.textAlign = "center";
+            ctx.fillText("The object has hit the ground", ballX, groundY + 55);
+            ctx.textAlign = "left";
+        }
+
+        ctx.fillStyle = "#1a5276";
+        ctx.beginPath(); ctx.arc(ballX, ballY, 10, 0, Math.PI*2); ctx.fill();
+    }
+
+    function update(timestamp) {
+        if (!isPlaying) { lastTimestamp = null; return; }
+        if (!lastTimestamp) lastTimestamp = timestamp;
+        const elapsed = (timestamp - lastTimestamp) / 1000;
+        const speed = parseFloat(document.getElementById('speed-select').value);
+        t += elapsed * speed;
+        lastTimestamp = timestamp;
+
+        if (t <= 6 && !hasHitGround) {
+            vChart.data.datasets[0].data.push({x: t, y: u - g*t});
+            vChart.update('none');
+        }
+        draw();
+        if (isPlaying) requestAnimationFrame(update);
+    }
+
+    document.getElementById('play-btn').onclick = () => {
+        if(hasHitGround) return;
+        isPlaying = !isPlaying;
+        document.getElementById('play-btn').innerText = isPlaying ? "Pause" : "Play";
+        if (isPlaying) requestAnimationFrame(update);
+    };
+
+    document.getElementById('snapshot-btn').onclick = () => {
+        if (hasHitGround) {
+            // Re-drawing to ensure the on-screen alert persists
+            draw();
+            return;
+        }
+        t += 1;
+        let h = u*t - 0.5*g*t*t;
+        if (h <= 0) { h = 0; hasHitGround = true; }
+        snapshots.push({t: Math.round(t), h: h});
+        if (t <= 6) { vChart.data.datasets[0].data.push({x: t, y: u - g*t}); vChart.update(); }
+        draw();
+    };
+
+    document.getElementById('reset-btn').onclick = resetSim;
+    uSlider.oninput = () => { u = parseInt(uSlider.value); uVal.innerText = u; resetSim(); };
+    
+    function updateInference() { document.getElementById('inference-text').innerText = questions[currentQ]; }
+    
+    document.getElementById('next-inf').onclick = () => { 
+        if(currentQ < questions.length - 1) { 
+            currentQ++; 
+            updateInference(); 
+        }
+    };
+    
+    document.getElementById('prev-inf').onclick = () => { 
+        if(currentQ > 0) { 
+            currentQ--; 
+            updateInference(); 
+        }
+    };
+
+    window.onload = init;
+</script>
+</body>
+</html>

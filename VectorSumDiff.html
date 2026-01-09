@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Physics: Vector Graphical Method</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: flex; gap: 20px; max-width: 1100px; width: 100%; }
+        .canvas-container { border: 2px solid #ddd; border-radius: 8px; background: #ffffff; }
+        .controls { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        
+        h2 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        .explanation { font-size: 1.1em; line-height: 1.8; color: #34495e; min-height: 300px; }
+        
+        /* --- Vector Rendering Fix --- */
+        .vec {
+            position: relative;
+            display: inline-block;
+            font-style: italic;
+            font-family: "Times New Roman", serif;
+            font-weight: bold;
+        }
+        .vec::before {
+            content: "→";
+            position: absolute;
+            top: -0.7em;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8em;
+            font-style: normal;
+        }
+        sub { font-size: 0.7em; vertical-align: sub; font-style: normal; }
+        
+        button { padding: 15px; background: #3498db; color: white; border: none; border-radius: 6px; font-size: 1.1em; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        button:hover { background: #2980b9; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="canvas-container">
+        <canvas id="simCanvas" width="600" height="600"></canvas>
+    </div>
+    <div class="controls">
+        <h2 id="stepTitle">Step 1</h2>
+        <div id="explanationText" class="explanation"></div>
+        <button id="actionBtn">Show Me</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const SCALE = 50; 
+    const CX = canvas.width / 2;
+    const CY = canvas.height / 2;
+
+    let step = 1;
+
+    const pts = {
+        p: {x: 3, y: 3},
+        p0: {x: -2, y: 1},
+        p1: {x: 2, y: 4},
+        p2: {x: 5, y: 1}
+    };
+
+    function toPx(x, y) { return { x: CX + x * SCALE, y: CY - y * SCALE }; }
+
+    function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#e8e8e8';
+        ctx.lineWidth = 1;
+        for(let i=0; i<=canvas.width; i+=SCALE) {
+            ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        }
+    }
+
+    function drawAxes() {
+        ctx.strokeStyle = '#2c3e50';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, CY); ctx.lineTo(canvas.width, CY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(CX, 0); ctx.lineTo(CX, canvas.height); ctx.stroke();
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 20px "Times New Roman"';
+        ctx.fillText('O', CX - 25, CY + 25);
+    }
+
+    function drawPhysicsLabel(main, sub, x, y, isVector = true) {
+        ctx.font = 'italic bold 20px "Times New Roman"';
+        const mainWidth = ctx.measureText(main).width;
+        ctx.fillText(main, x, y);
+        if (isVector) {
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x, y - 22);
+            ctx.lineTo(x + mainWidth, y - 22);
+            ctx.lineTo(x + mainWidth - 4, y - 25);
+            ctx.stroke();
+        }
+        if (sub) {
+            ctx.font = 'bold 14px "Times New Roman"';
+            ctx.fillText(sub, x + mainWidth, y + 5);
+        }
+    }
+
+    function drawVector(x1, y1, x2, y2, color, labelMain, labelSub) {
+        const start = toPx(x1, y1);
+        const end = toPx(x2, y2);
+        const head = 12;
+        const angle = Math.atan2(end.y - start.y, end.x - start.x);
+        ctx.strokeStyle = ctx.fillStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(start.x, start.y); ctx.lineTo(end.x, end.y); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(end.x, end.y);
+        ctx.lineTo(end.x - head * Math.cos(angle - Math.PI/6), end.y - head * Math.sin(angle - Math.PI/6));
+        ctx.lineTo(end.x - head * Math.cos(angle + Math.PI/6), end.y - head * Math.sin(angle + Math.PI/6));
+        ctx.fill();
+        if(labelMain) {
+            const midX = (start.x + end.x) / 2;
+            const midY = (start.y + end.y) / 2;
+            const lx = midX + 25 * Math.cos(angle - Math.PI/2);
+            const ly = midY + 25 * Math.sin(angle - Math.PI/2);
+            drawPhysicsLabel(labelMain, labelSub, lx, ly, true);
+        }
+    }
+
+    function drawPointLabel(x, y, main, sub, color="#333") {
+        const p = toPx(x, y);
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, 7); ctx.fill();
+        drawPhysicsLabel(main, sub, p.x + 10, p.y - 10, false);
+    }
+
+    function render() {
+        drawGrid();
+        const title = document.getElementById('stepTitle');
+        const info = document.getElementById('explanationText');
+        const btn = document.getElementById('actionBtn');
+
+        switch(step) {
+            case 1:
+                title.innerText = "1. Defining Position";
+                info.innerHTML = "How do we define the position of point <b>P</b>?<br><br>The grid marks 1m units, but without a frame of reference, we cannot assign a unique address.";
+                drawPointLabel(pts.p.x, pts.p.y, "P", "");
+                btn.innerText = "Show Me";
+                break;
+            case 2:
+                title.innerText = "2. The Position Vector";
+                info.innerHTML = "By defining an <b>Origin (O)</b>, we create a reference.<br><br>The position vector <span class='vec'>r</span> is directed from the reference point from <b>O</b> to <b>P</b>.";
+                drawAxes();
+                drawPointLabel(pts.p.x, pts.p.y, "P", "");
+                drawVector(0,0, pts.p.x, pts.p.y, "#e74c3c", "r", "");
+                btn.innerText = "What if P moves?";
+                break;
+            case 3:
+                title.innerText = "3. Displacement";
+                info.innerHTML = "At <span class='formula'>t=0</span> object is at <span class='vec'>P<sub>0</sub></span>. At <span class='formula'>t=t<sub>1</sub></span> it reaches <span class='vec'>P<sub>1</sub></span>.<br><br>Displacement <span class='vec'>d<sub>01</sub></span> is the shortest vector from the initial to the final position.";
+                drawAxes();
+                drawPointLabel(pts.p0.x, pts.p0.y, "P", "0");
+                drawPointLabel(pts.p1.x, pts.p1.y, "P", "1");
+                drawVector(pts.p0.x, pts.p0.y, pts.p1.x, pts.p1.y, "#2ecc71", "d", "01");
+                btn.innerText = "Continue Path";
+                break;
+            case 4:
+                title.innerText = "4. Vector Addition";
+                info.innerHTML = "For movement <span class='vec'>P<sub>0</sub> &rarr; P<sub>1</sub></span> and <span class='vec'>P<sub>1</sub> &rarr; P<sub>2</sub></span>, we add vectors.<br><br>Total displacement <span class='vec'>R</span> is the sum of <span class='vec'>d<sub>01</sub></span> and <span class='vec'>d<sub>12</sub></span>.";
+                drawAxes();
+                drawPointLabel(pts.p0.x, pts.p0.y, "P", "0");
+                drawPointLabel(pts.p1.x, pts.p1.y, "P", "1");
+                drawPointLabel(pts.p2.x, pts.p2.y, "P", "2");
+                drawVector(pts.p0.x, pts.p0.y, pts.p1.x, pts.p1.y, "#3498db", "d", "01");
+                drawVector(pts.p1.x, pts.p1.y, pts.p2.x, pts.p2.y, "#3498db", "d", "12");
+                drawVector(pts.p0.x, pts.p0.y, pts.p2.x, pts.p2.y, "#e67e22", "R", "");
+                btn.innerText = "Subtraction Logic";
+                break;
+            case 5:
+                title.innerText = "5. Vector Subtraction";
+                info.innerHTML = "Displacement is the change in position vectors:<br><br><span class='vec'>d<sub>01</sub></span> = <span class='vec'>r<sub>1</sub></span> - <span class='vec'>r<sub>0</sub></span><br><br>Graphically, this closes the triangle formed by the position vectors.";
+                drawAxes();
+                drawPointLabel(pts.p0.x, pts.p0.y, "P", "0");
+                drawPointLabel(pts.p1.x, pts.p1.y, "P", "1");
+                drawVector(0, 0, pts.p0.x, pts.p0.y, "#95a5a6", "r", "0");
+                drawVector(0, 0, pts.p1.x, pts.p1.y, "#3498db", "r", "1");
+                drawVector(pts.p0.x, pts.p0.y, pts.p1.x, pts.p1.y, "#2ecc71", "d", "01");
+                btn.innerText = "Restart";
+                break;
+        }
+    }
+
+    document.getElementById('actionBtn').addEventListener('click', () => {
+        step = step < 5 ? step + 1 : 1;
+        render();
+    });
+
+    render();
+</script>
+
+</body>
+</html>

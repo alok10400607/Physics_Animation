@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Interactive Lab | JEE & NEET Preparation</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #64748b;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            letter-spacing: -0.025em;
+        }
+
+        header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 1rem auto 0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: -3rem auto 4rem;
+            padding: 0 1.5rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #e2e8f0;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .tag {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1e40af;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .card h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.25rem;
+            color: #0f172a;
+        }
+
+        .card p {
+            color: var(--secondary);
+            font-size: 0.95rem;
+            flex-grow: 1;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--secondary);
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 640px) {
+            header { padding: 3rem 1rem; }
+            header h1 { font-size: 1.8rem; }
+            .container { margin-top: -1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Physics Interactive Lab</h1>
+    <p>Visualizing concepts for Class XI, JEE, and NEET preparation.</p>
+</header>
+
+<div class="container">
+    <div class="grid">
+        <div class="card">
+            <span class="tag">Kinematics</span>
+            <h3>v-t Graph Explorer</h3>
+            <p>Analyze the relationship between velocity-time graphs, displacement, and distance using interactive intervals and area calculations.</p>
+            <a href="Kin_v_t_Graph.html" class="btn">Launch Simulation</a>
+        </div>
+
+        <div class="card">
+            <span class="tag">Kinematics</span>
+            <h3>Vertical Projection Lab</h3>
+            <p>Study 1D motion under gravity. Observe symmetry between ascent and descent, snapshots, and real-time v-t graphing.</p>
+            <a href="VerticalProjectile.html" class="btn">Launch Simulation</a>
+        </div>
+
+        <div class="card">
+            <span class="tag">Vectors</span>
+            <h3>Vector Graphical Method</h3>
+            <p>A step-by-step interactive guide to understanding position vectors, displacement, and the triangle law of vector addition/subtraction.</p>
+            <a href="VectorSumDiff.html" class="btn">Launch Simulation</a>
+        </div>
+
+        <div class="card">
+            <span class="tag">Laws of Motion</span>
+            <h3>Incline & Friction</h3>
+            <p>Explore the mechanics of a block on a 45° slope. Visualize gravity, applied force, and the self-adjusting nature of static friction.</p>
+            <a href="LOMFrictionSim.html" class="btn">Launch Simulation</a>
+        </div>
+    </div>
+</div>
+
+<footer>
+    &copy; 2026 Physics Digital Notes Project. Designed for interactive learning.
+</footer>
+
+</body>
+</html>
