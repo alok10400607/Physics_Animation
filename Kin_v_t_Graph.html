@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Sim: v-t Interval Explorer</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root { --primary: #2e7d32; --secondary: #d32f2f; --bg: #f8f9fa; --panel: #ffffff; --accent: #ef6c00; --point-a: #1976d2; --point-b: #388e3c; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg); overflow: hidden; justify-content: center; align-items: center; }
+        #app-container { display: flex; align-items: flex-end; gap: 20px; height: 620px; }
+        #sidebar { width: 340px; height: 620px; background: var(--panel); border: 1px solid #ddd; display: flex; flex-direction: column; padding: 15px; border-radius: 8px; box-sizing: border-box; }
+        h2 { color: var(--primary); margin: 0 0 10px 0; font-size: 1.1rem; border-bottom: 2px solid var(--primary); padding-bottom: 5px; }
+        
+        .tab-container { display: flex; gap: 2px; }
+        .tab-btn { flex: 1; padding: 8px; border: 1px solid #ddd; border-bottom: none; background: #eee; cursor: pointer; font-size: 0.8rem; font-weight: bold; border-radius: 5px 5px 0 0; transition: 0.2s; color: #666; }
+        .tab-btn.active-guide { background: #f1f8e9; border-top: 3px solid var(--primary); color: var(--primary); }
+        .tab-btn.active-challenge { background: #fffcf5; border-top: 3px solid var(--accent); color: var(--accent); }
+
+        #display-window { background: #fff; padding: 12px; border: 1px solid #ddd; border-radius: 0 0 6px 6px; font-size: 0.82rem; line-height: 1.5; height: 180px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; margin-bottom: 12px; }
+        .nav-row { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+        .nav-btn { cursor: pointer; background: #444; border: none; font-size: 0.7rem; color: white; border-radius: 3px; padding: 2px 8px; }
+
+        h3 { font-size: 0.72rem; text-transform: uppercase; color: #777; margin: 0 0 5px 0; }
+        .section { margin-bottom: 10px; }
+        input[type=range] { width: 100%; cursor: pointer; height: 12px; }
+        .data-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #eee; font-size: 0.8rem; }
+        .val { font-weight: bold; font-family: monospace; }
+        
+        #main-canvas-area { position: relative; height: 620px; width: 700px; }
+        canvas { background: white; border: 1px solid #ddd; border-radius: 8px; }
+        .axis-label { position: absolute; font-weight: bold; font-style: italic; font-size: 0.9rem; }
+        
+        .control-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .animate-btn { flex: 1; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .speed-label { font-size: 0.8rem; font-weight: bold; color: #555; }
+        .speed-select { flex: 0.8; padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; cursor: pointer; }
+
+        .slider-header { display: flex; justify-content: space-between; align-items: baseline; }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div id="sidebar">
+        <h2>Kinematics: \(v-t\) Graph</h2>
+        <div class="tab-container">
+            <button id="tab-guide" class="tab-btn active-guide" onclick="switchTab('guide')">Guide Me</button>
+            <button id="tab-challenge" class="tab-btn" onclick="switchTab('challenge')">Challenges</button>
+        </div>
+        <div id="display-window">
+            <div id="content-text"></div>
+            <div class="nav-row">
+                <span id="stepCounter" style="font-size: 0.7rem; color: #666; font-weight: bold;"></span>
+                <button class="nav-btn" onclick="changeStep(-1)" id="prevBtn">◀</button>
+                <button class="nav-btn" onclick="changeStep(1)" id="nextBtn">▶</button>
+            </div>
+        </div>
+        <div class="section">
+            <h3>Control Panel</h3>
+            <div class="control-row">
+                <button id="animBtn" class="animate-btn" onclick="toggleAnimation()">▶ Play</button>
+                <span class="speed-label">Speed:</span>
+                <select id="speedSel" class="speed-select">
+                    <option value="1">1x</option>
+                    <option value="0.5">0.5x</option>
+                    <option value="0.2">0.2x</option>
+                </select>
+            </div>
+            <div style="margin-bottom:5px">
+                <div class="slider-header">
+                    <label style="font-size:0.75rem">Time \(A\):</label>
+                    <span id="valA" class="val" style="color:var(--point-a)">0.0s</span>
+                </div>
+                <input type="range" id="tA" min="0" max="10" step="0.1" value="0">
+            </div>
+            <div>
+                <div class="slider-header">
+                    <label style="font-size:0.75rem">Time \(B\):</label>
+                    <span id="valB" class="val" style="color:var(--point-b)">0.0s</span>
+                </div>
+                <input type="range" id="tB" min="0" max="10" step="0.1" value="0">
+            </div>
+        </div>
+        
+        <div class="section" style="margin-bottom:0">
+            <h3>Numerical Data (\(t_A\) to \(t_B\))</h3>
+            <div class="data-row"><span>Displacement (\\(\Delta x\\)):</span> <span class="val" id="dispVal" style="color:var(--primary)">0.00 m</span></div>
+            <div class="data-row"><span>Distance:</span> <span class="val" id="distVal" style="color:var(--accent)">0.00 m</span></div>
+        </div>
+    </div>
+
+    <div id="main-canvas-area">
+        <canvas id="graphCanvas" width="700" height="620"></canvas>
+        <div class="axis-label" style="top: 95px; left: 55px;">\(v\) (m/s)</div>
+        <div class="axis-label" style="bottom: 15px; right: 25px;">\(t\) (s)</div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const tASlider = document.getElementById('tA');
+    const tBSlider = document.getElementById('tB');
+    const animBtn = document.getElementById('animBtn');
+    const speedSel = document.getElementById('speedSel');
+
+    const scale = { x: 60, y: 40, offX: 50, offY: 350 }; 
+    const trackConfig = { y: 70, zeroPixX: 50, pixPerM: 40 }; 
+
+    let activeTab = 'guide', gStep = 0, cStep = 0, isAnimating = false, animT = 0;
+
+    function getV(t) {
+        if (t <= 4) return 6 - 2 * t;
+        return -2 + (t - 4);
+    }
+    function getX(t) {
+        if (t <= 4) return 6*t - t*t;
+        const x4 = 6*4 - 16;
+        return x4 - 2*(t-4) + 0.5*Math.pow(t-4, 2);
+    }
+
+    const guideLines = [
+        "1. <b>Simulation Basics:</b> Click <b>Play</b> to run the simulation. Observe the <b>Red Dot</b> on the \\(v-t\\) graph indicating instantaneous velocity and on the <b>Physical 1D Track</b> indicating position. Use slow-motion if needed.",
+        "2. <b>Intuitive Visualization:</b> Focus on developing an intuitive understanding of visualizing 1D motion for any given \\(v-t\\) graph.",
+        "3. <b>Interval Selection:</b> Labels <b>A and B</b> on the graph mark your selected time limits. The <b>Numerical Data</b> updates for this interval. Use these to understand the relationship between displacement and the area under the \\(v-t\\) graph.",
+        "4. <b>Dynamic Comparison:</b> Keeping <b>Time A at 0s</b>, gradually increase <b>Time B</b> to observe three-way changes: the area on the graph, positions A and B on the track, and displacement/distance in the data panel.",
+        "5. <b>Distance vs. Displacement:</b> Observe the instant displacement and distance start diverging and think of a logical explanation based on the particle's direction.",
+        "6. <b>The Integral:</b> Displacement is calculated as \\( \\Delta x = \\int_{t_A}^{t_B} v(t) dt \\). Observe the significance of the area when the \\(v-t\\) graph is marked as negative."
+    ];
+
+    const challengeLines = [
+        "<b>Challenge 1:</b> How does the area sign change after \\(t = 3s\\)? What does this imply for the tracer dot's direction of motion?",
+        "<b>Challenge 2:</b> For \\(t_A = 0\\), what value of \\(t_B\\) makes the displacement maximum? Solve using the graph geometry first, then verify with the simulation.",
+        "<b>Challenge 3:</b> Find the value of \\(t_A\\) such that when \\(t_B = 6s\\), the net displacement is zero.",
+        "<b>Challenge 4:</b> Find the time interval where the difference between distance traveled and the magnitude of displacement is maximized. Verify using the data panel.",
+        "<b>Challenge 5:</b> How many times does the direction of motion change during the 10-second interval? Answer using the \\(v-t\\) graph and observe the reversal on the Motion Track.",
+        "<b>Challenge 6:</b> At what time is the tracer dot furthest from the origin? How does this point relate to the \\(v=0\\) intercepts on the graph?"
+    ];
+
+    function switchTab(tab) {
+        activeTab = tab;
+        document.getElementById('tab-guide').className = (tab === 'guide') ? "tab-btn active-guide" : "tab-btn";
+        document.getElementById('tab-challenge').className = (tab === 'challenge') ? "tab-btn active-challenge" : "tab-btn";
+        renderContent();
+    }
+
+    function changeStep(dir) {
+        if(activeTab === 'guide') gStep = Math.max(0, Math.min(guideLines.length - 1, gStep + dir));
+        else cStep = Math.max(0, Math.min(challengeLines.length - 1, cStep + dir));
+        renderContent();
+    }
+
+    function renderContent() {
+        const text = document.getElementById('content-text');
+        const counter = document.getElementById('stepCounter');
+        const curArr = (activeTab === 'guide') ? guideLines : challengeLines;
+        const curStep = (activeTab === 'guide') ? gStep : cStep;
+        text.innerHTML = curArr[curStep];
+        counter.innerText = `${curStep + 1} / ${curArr.length}`;
+        document.getElementById('prevBtn').disabled = (curStep === 0);
+        document.getElementById('nextBtn').disabled = (curStep === curArr.length - 1);
+        if (window.MathJax) MathJax.typesetPromise([text]).catch(() => {});
+    }
+
+    function drawMotionTrack(currT) {
+        const ty = trackConfig.y, tStart = trackConfig.zeroPixX, tScale = trackConfig.pixPerM;
+        ctx.fillStyle = "#2e7d32"; ctx.font = "bold 13px Arial"; ctx.textAlign = "left";
+        ctx.fillText("Physical 1D Motion Track (Initial position x = 0 m)", tStart, ty - 25);
+        ctx.beginPath();
+        ctx.strokeStyle = "#000"; ctx.lineWidth = 2;
+        ctx.moveTo(tStart, ty); ctx.lineTo(tStart + 15 * tScale, ty); ctx.stroke();
+        
+        ctx.fillStyle = "#888";
+        ctx.font = "10px Arial"; ctx.textAlign = "center";
+        for(let m = 0; m <= 15; m += 1) { 
+            let tx = tStart + m * tScale;
+            ctx.beginPath(); ctx.moveTo(tx, ty - 4); ctx.lineTo(tx, ty + 4); ctx.stroke();
+            if(m % 5 === 0) ctx.fillText(m + "m", tx, ty + 15);
+        }
+
+        let tA = parseFloat(tASlider.value), tB = parseFloat(tBSlider.value);
+        [[getX(tA), "#1976d2", "A"], [getX(tB), "#388e3c", "B"]].forEach(m => {
+            let mx = tStart + m[0] * tScale;
+            ctx.beginPath(); ctx.fillStyle = m[1]; ctx.arc(mx, ty, 6, 0, 7); ctx.fill();
+            ctx.fillStyle = "#000"; ctx.font = "bold 10px Arial"; ctx.fillText(m[2], mx, ty - 10);
+        });
+        if (currT !== null) {
+            let dotX = tStart + getX(currT) * tScale;
+            ctx.beginPath(); ctx.fillStyle = "rgba(211, 47, 47, 0.4)"; ctx.arc(dotX, ty, 10, 0, 7); ctx.fill();
+            ctx.beginPath(); ctx.fillStyle = "#d32f2f";
+            ctx.arc(dotX, ty, 5, 0, 7); ctx.fill(); 
+        }
+    }
+
+    function drawGrid() {
+        ctx.strokeStyle = "#f0f0f0";
+        ctx.lineWidth = 1; ctx.textAlign = "center";
+        for(let i=0; i<=10; i++) {
+            ctx.beginPath();
+            ctx.moveTo(scale.offX + i*scale.x, 600); ctx.lineTo(scale.offX + i*scale.x, 110); ctx.stroke();
+            ctx.fillStyle = "#999"; ctx.fillText(i+"s", scale.offX + i*scale.x, scale.offY + 240);
+        }
+        for(let v=-4; v<=7; v++) {
+            ctx.beginPath();
+            ctx.moveTo(scale.offX, scale.offY - v*scale.y); ctx.lineTo(canvas.width, scale.offY - v*scale.y); ctx.stroke();
+            ctx.fillStyle = "#999";
+            ctx.fillText(v, scale.offX - 15, scale.offY - v*scale.y + 4);
+        }
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(scale.offX, 110); ctx.lineTo(scale.offX, 600); ctx.stroke(); 
+        ctx.beginPath(); ctx.moveTo(scale.offX, scale.offY); ctx.lineTo(canvas.width, scale.offY); ctx.stroke(); 
+    }
+
+    function drawIntervalArea() {
+        let t1 = Math.min(parseFloat(tASlider.value), parseFloat(tBSlider.value));
+        let t2 = Math.max(parseFloat(tASlider.value), parseFloat(tBSlider.value));
+        let breakPoints = [t1, 3, 4, 6, t2].filter(p => p >= t1 && p <= t2).sort((a,b) => a-b);
+        for(let i=0; i < breakPoints.length - 1; i++) {
+            let start = breakPoints[i];
+            let end = breakPoints[i+1];
+            if (start === end) continue;
+            let avgV = getV((start+end)/2);
+            let color = avgV > 0 ? "rgba(76, 175, 80, 0.3)" : "rgba(244, 67, 54, 0.3)";
+            ctx.fillStyle = color;
+            ctx.beginPath(); ctx.moveTo(scale.offX + start*scale.x, scale.offY);
+            for(let t=start; t<=end; t+=0.1) ctx.lineTo(scale.offX + t*scale.x, scale.offY - getV(t)*scale.y);
+            ctx.lineTo(scale.offX + end*scale.x, scale.offY); ctx.fill();
+            let areaVal = (getX(end) - getX(start)).toFixed(1);
+            ctx.fillStyle = "#333"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center";
+            ctx.fillText(areaVal + "m", scale.offX + ((start+end)/2)*scale.x, scale.offY - (getV((start+end)/2)/2)*scale.y);
+        }
+    }
+
+    function update(t) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        drawIntervalArea();
+        drawMotionTrack(t);
+        ctx.beginPath(); ctx.strokeStyle = "#1976d2"; ctx.lineWidth = 3;
+        for(let i=0; i<=10; i+=0.05) ctx.lineTo(scale.offX + i*scale.x, scale.offY - getV(i)*scale.y);
+        ctx.stroke();
+
+        let tA = parseFloat(tASlider.value), tB = parseFloat(tBSlider.value);
+        document.getElementById('valA').innerText = tA.toFixed(1) + "s";
+        document.getElementById('valB').innerText = tB.toFixed(1) + "s";
+        document.getElementById('dispVal').innerText = (getX(Math.max(tA, tB)) - getX(Math.min(tA, tB))).toFixed(2) + " m";
+        
+        let dist = 0;
+        for(let i=Math.min(tA,tB); i<Math.max(tA,tB); i+=0.01) dist += Math.abs(getV(i)) * 0.01;
+        document.getElementById('distVal').innerText = dist.toFixed(2) + " m";
+        
+        [[tA, getV(tA), "A"], [tB, getV(tB), "B"]].forEach(p => {
+            ctx.fillStyle = p[2] === "A" ? "#1976d2" : "#388e3c";
+            ctx.beginPath(); ctx.arc(scale.offX + p[0]*scale.x, scale.offY - p[1]*scale.y, 6, 0, 7); ctx.fill();
+            ctx.fillStyle = "#000"; ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
+            ctx.fillText(p[2], scale.offX + p[0]*scale.x, scale.offY - p[1]*scale.y - 12);
+        });
+        if(t !== null) {
+            ctx.fillStyle = "red"; ctx.beginPath();
+            ctx.arc(scale.offX + t*scale.x, scale.offY - getV(t)*scale.y, 5, 0, 7); ctx.fill();
+        }
+    }
+
+    function toggleAnimation() {
+        isAnimating = !isAnimating;
+        animBtn.innerText = isAnimating ? "■ Stop" : "▶ Play";
+        if (isAnimating) animate();
+    }
+
+    function animate() {
+        if (!isAnimating) return;
+        let speed = parseFloat(speedSel.value);
+        animT += 0.04 * speed; 
+        if (animT > 10) animT = 0;
+        update(animT);
+        requestAnimationFrame(animate);
+    }
+
+    canvas.addEventListener('mousemove', (e) => {
+        if (isAnimating) return;
+        let t = (e.clientX - canvas.getBoundingClientRect().left - scale.offX) / scale.x;
+        if(t >= 0 && t <= 10) update(t);
+    });
+    tASlider.oninput = () => update(null);
+    tBSlider.oninput = () => update(null);
+    switchTab('guide');
+    update(null);
+</script>
+</body>
+</html>
