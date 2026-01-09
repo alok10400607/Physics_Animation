@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torque Simulation: Fixed Axis Rotation</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --accent-color: #2c3e50;
+            --force-color: #e74c3c;
+            --pos-vector-color: #27ae60;
+            --moment-arm-color: #f39c12;
+            --border-color: #dcdde1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--accent-color);
+        }
+
+        header {
+            width: 100%;
+            background: var(--accent-color);
+            color: white;
+            padding: 0.8rem;
+            text-align: center;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1150px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .panel {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            width: 280px;
+        }
+
+        .canvas-container { position: relative; }
+
+        canvas {
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px; }
+        input[type="range"] { width: 100%; margin-bottom: 5px; }
+        
+        .coord-display {
+            font-size: 0.95rem;
+            background: #f1f2f6;
+            padding: 5px;
+            border-radius: 4px;
+            text-align: center;
+            margin-bottom: 10px;
+            min-height: 1.5em;
+        }
+
+        .torque-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.95);
+            padding: 10px;
+            border: 2px solid var(--accent-color);
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            pointer-events: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        #startBtn { background-color: #27ae60; color: white; }
+        #resetBtn { background-color: #95a5a6; color: white; }
+        button:disabled { opacity: 0.5; }
+
+        .popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            display: none;
+            z-index: 10;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h2 style="margin:0">Torque: \(\vec{\tau} = \vec{r} \times \vec{F}\)</h2>
+</header>
+
+<div class="main-container">
+    <aside class="panel">
+        <div class="control-group">
+            <label>Axis \(O\) Coordinates</label>
+            <div id="oCoord" class="coord-display">\(O = (0.0, 0.0)\) m</div>
+            <input type="range" id="ox" min="-2" max="2" step="0.1" value="0">
+            <input type="range" id="oy" min="-2" max="2" step="0.1" value="0">
+        </div>
+        <hr>
+        <div class="control-group">
+            <label>Point \(P\) Coordinates</label>
+            <div id="pCoord" class="coord-display">\(P = (1.5, 1.5)\) m</div>
+            <input type="range" id="px" min="-2" max="2" step="0.1" value="1.5">
+            <input type="range" id="py" min="-2" max="2" step="0.1" value="1.5">
+        </div>
+        <div class="control-group">
+            <label>Force Angle (\(\theta\))</label>
+            <div id="aCoord" class="coord-display">\(\theta = 45^\circ\)</div>
+            <input type="range" id="fa" min="0" max="360" step="1" value="45">
+        </div>
+        <button id="startBtn">Start Animation</button>
+        <button id="resetBtn">Reset</button>
+        <div style="margin-top:15px; font-size: 0.85rem;">
+            <label><input type="checkbox" id="showDecomp"> Show Decomposition</label>
+        </div>
+    </aside>
+
+    <main class="canvas-container">
+        <canvas id="simCanvas" width="550" height="550"></canvas>
+        <div id="torqueDisplay" class="torque-display">
+            \(\tau = \) <span id="tMag">0</span> Nm <br>
+            Dir: <span id="tDir">k̂</span>
+        </div>
+        <div id="vizPopup" class="popup">Try to visualize the rotation and verify.</div>
+        <div id="pausePopup" class="popup">Auto-Paused (360° Complete)</div>
+    </main>
+</div>
+
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const scale = 50; 
+    const center = { x: canvas.width / 2, y: canvas.height / 2 };
+
+    let O = { x: 0, y: 0 };
+    let P_rel = { x: 1.5, y: 1.5 }; 
+    let forceAngle = 45 * Math.PI / 180;
+    let rotationAngle = 0;
+    let isAnimating = false;
+    let animStartTime = 0;
+    let torqueSign = 1;
+
+    const oxIn = document.getElementById('ox'); const oyIn = document.getElementById('oy');
+    const pxIn = document.getElementById('px'); const pyIn = document.getElementById('py');
+    const faIn = document.getElementById('fa'); const showDecomp = document.getElementById('showDecomp');
+    const startBtn = document.getElementById('startBtn'); const resetBtn = document.getElementById('resetBtn');
+
+    function updateParams() {
+        O.x = parseFloat(oxIn.value); O.y = parseFloat(oyIn.value);
+        P_rel.x = parseFloat(pxIn.value); P_rel.y = parseFloat(pyIn.value);
+        forceAngle = parseFloat(faIn.value) * Math.PI / 180;
+        
+        // Update selection text in Panel
+        document.getElementById('oCoord').innerHTML = `\\(O = (${O.x.toFixed(1)}, ${O.y.toFixed(1)})\\) m`;
+        document.getElementById('pCoord').innerHTML = `\\(P = (${P_rel.x.toFixed(1)}, ${P_rel.y.toFixed(1)})\\) m`;
+        document.getElementById('aCoord').innerHTML = `\\(\\theta = ${faIn.value}^\\circ\\)`;
+        
+        // Trigger MathJax re-render for the panel displays
+        if (window.MathJax) {
+            MathJax.typesetPromise([document.querySelector('.panel')]);
+        }
+        
+        draw();
+    }
+
+    [oxIn, oyIn, pxIn, pyIn, faIn, showDecomp].forEach(el => el.addEventListener('input', updateParams));
+
+    function drawGrid() {
+        ctx.strokeStyle = '#f5f5f5';
+        ctx.lineWidth = 1;
+        for(let i = 0; i <= canvas.width; i += scale) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        }
+        ctx.strokeStyle = '#aaa';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(center.x, 0); ctx.lineTo(center.x, canvas.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, center.y); ctx.lineTo(canvas.width, center.y); ctx.stroke();
+        ctx.fillStyle = "#666";
+        ctx.font = "14px Arial";
+        ctx.fillText("X", canvas.width - 20, center.y - 10);
+        ctx.fillText("Y", center.x + 10, 20);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+
+        const O_world = { x: center.x + O.x * scale, y: center.y - O.y * scale };
+        
+        // Calculate physics values
+        const rx_m = P_rel.x - O.x;
+        const ry_m = P_rel.y - O.y;
+        const Fx_unit = Math.cos(forceAngle);
+        const Fy_unit = Math.sin(forceAngle);
+        const torqueVal = rx_m * Fy_unit - ry_m * Fx_unit;
+        torqueSign = Math.sign(torqueVal);
+
+        ctx.save();
+        ctx.translate(O_world.x, O_world.y);
+        // Physics rotation: Torque + -> ACW. Canvas rotation: + -> CW.
+        // Therefore, we rotate by -torqueSign * rotationAngle
+        ctx.rotate(-torqueSign * rotationAngle); 
+
+        // Square Lamina
+        const sqX = -O.x * scale; const sqY = O.y * scale;
+        ctx.fillStyle = 'rgba(44, 62, 80, 0.1)';
+        ctx.strokeStyle = '#2c3e50';
+        ctx.lineWidth = 2;
+        ctx.fillRect(sqX - 2*scale, sqY - 2*scale, 4*scale, 4*scale);
+        ctx.strokeRect(sqX - 2*scale, sqY - 2*scale, 4*scale, 4*scale);
+
+        // Point P and Vector r
+        const P_pos = { x: (P_rel.x - O.x)*scale, y: -(P_rel.y - O.y)*scale };
+        ctx.strokeStyle = '#27ae60'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(P_pos.x, P_pos.y); ctx.stroke();
+        
+        ctx.fillStyle = '#e74c3c';
+        ctx.beginPath(); ctx.arc(P_pos.x, P_pos.y, 6, 0, 7); ctx.fill();
+        ctx.fillStyle = 'black'; ctx.font = "bold 16px serif";
+        ctx.fillText("P", P_pos.x + 10, P_pos.y - 10);
+
+        // Force and Decomposition
+        const F_len = 90;
+        const Fx = Math.cos(forceAngle) * F_len;
+        const Fy = -Math.sin(forceAngle) * F_len;
+
+        if(showDecomp.checked) {
+            const rAngle = Math.atan2(P_pos.y, P_pos.x);
+            const forceAngleCanvas = Math.atan2(Fy, Fx);
+            const diff = forceAngleCanvas - rAngle;
+            
+            const radial = Math.cos(diff) * F_len;
+            const tang = Math.sin(diff) * F_len;
+
+            drawArrow(P_pos.x, P_pos.y, P_pos.x + Math.cos(rAngle)*radial, P_pos.y + Math.sin(rAngle)*radial, '#34495e', "F∥");
+            drawArrow(P_pos.x, P_pos.y, P_pos.x + Math.cos(rAngle+Math.PI/2)*tang, P_pos.y + Math.sin(rAngle+Math.PI/2)*tang, '#9b59b6', "F⊥");
+        }
+
+        drawArrow(P_pos.x, P_pos.y, P_pos.x + Fx, P_pos.y + Fy, '#e74c3c', "F");
+        
+        // Moment Arm
+        const r_dot_f = rx_m * Fx_unit + ry_m * Fy_unit;
+        const cp = { x: P_pos.x - (r_dot_f * Fx_unit) * scale, y: P_pos.y + (r_dot_f * Fy_unit) * scale };
+        ctx.setLineDash([4, 4]); ctx.strokeStyle = '#f39c12';
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(cp.x, cp.y); ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.restore();
+
+        // Axis O (Static on top)
+        ctx.fillStyle = 'black';
+        ctx.beginPath(); ctx.arc(O_world.x, O_world.y, 4, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(O_world.x, O_world.y, 11, 0, 7); ctx.stroke();
+        ctx.font = "bold 16px serif";
+        ctx.fillText("O", O_world.x - 20, O_world.y - 15);
+
+        // UI
+        document.getElementById('tMag').innerText = Math.abs(torqueVal).toFixed(2);
+        const dirSymbol = torqueVal > 0.001 ? "⊙ (+k̂) ACW" : (torqueVal < -0.001 ? "⊗ (-k̂) CW" : "0");
+        document.getElementById('tDir').innerText = dirSymbol;
+        document.getElementById('tDir').style.color = torqueVal > 0.001 ? "green" : (torqueVal < -0.001 ? "red" : "#333");
+    }
+
+    function drawArrow(x1, y1, x2, y2, color, label) {
+        const head = 10; const ang = Math.atan2(y2-y1, x2-x1);
+        ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x2, y2);
+        ctx.lineTo(x2-head*Math.cos(ang-Math.PI/6), y2-head*Math.sin(ang-Math.PI/6));
+        ctx.lineTo(x2-head*Math.cos(ang+Math.PI/6), y2-head*Math.sin(ang+Math.PI/6));
+        ctx.fill(); ctx.fillText(label, x2+5, y2+5);
+    }
+
+    function animate(time) {
+        if (!isAnimating) return;
+        if (!animStartTime) animStartTime = time;
+        const elapsed = time - animStartTime;
+
+        if (elapsed < 2000) {
+            document.getElementById('vizPopup').style.display = 'block';
+            rotationAngle = 0;
+        } else if (elapsed < 6000) {
+            document.getElementById('vizPopup').style.display = 'none';
+            rotationAngle = ((elapsed - 2000) / 4000) * Math.PI * 2;
+        } else {
+            rotationAngle = Math.PI * 2;
+            isAnimating = false;
+            document.getElementById('pausePopup').style.display = 'block';
+        }
+        draw();
+        requestAnimationFrame(animate);
+    }
+
+    startBtn.onclick = () => { 
+        if(!isAnimating){ 
+            animStartTime = 0; 
+            isAnimating = true; 
+            startBtn.disabled = true; 
+            requestAnimationFrame(animate); 
+        }
+    };
+
+    resetBtn.onclick = () => { 
+        isAnimating = false; rotationAngle = 0; startBtn.disabled = false; 
+        document.querySelectorAll('.popup').forEach(p => p.style.display = 'none'); 
+        draw(); 
+    };
+
+    updateParams();
+</script>
+</body>
+</html>

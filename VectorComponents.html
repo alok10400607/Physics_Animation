@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Practice Engine - Corrected Logic</title>
+    <style>
+        :root {
+            --primary-bg: #fdfdfd;
+            --grid-line: #e0e0e0;
+            --vector-color: #2d3436;
+            --i-color: #d63031;
+            --j-color: #0984e3;
+            --panel-bg: #f1f2f6;
+            --success: #00b894;
+            --error: #d63031;
+            --arrow-light: #b2bec3;
+        }
+
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; background-color: var(--primary-bg); }
+        
+        .vec { position: relative; display: inline-block; padding-top: 0.2em; }
+        .vec::before { content: "→"; position: absolute; top: -0.5em; left: 50%; transform: translateX(-50%); font-size: 0.7em; font-weight: bold; }
+
+        .side-panel { width: 300px; background-color: var(--panel-bg); border-right: 2px solid #dfe6e9; padding: 20px; display: flex; flex-direction: column; gap: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.05); z-index: 10; }
+        .main-display { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; background: white; }
+
+        #visualizer-box { 
+            position: relative; 
+            width: 400px; 
+            height: 400px; 
+            background-color: white;
+            background-image: 
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: -1px -1px; 
+            border: 1px solid #636e72;
+            box-sizing: content-box;
+        }
+
+        #svg-canvas { position: absolute; top: 0; left: 0; width: 400px; height: 400px; }
+
+        .response-section, .param-box { background: white; padding: 15px; border-radius: 8px; border: 1px solid #ccc; }
+        .input-group { display: flex; align-items: center; gap: 5px; margin-bottom: 12px; }
+        .param-row { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center; }
+
+        input[type="number"], select { padding: 6px; border: 1px solid #ccc; border-radius: 4px; width: 60px; font-weight: bold; }
+        
+        .controls { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+        button { padding: 12px; cursor: pointer; border: none; border-radius: 6px; background: #2d3436; color: white; font-weight: bold; transition: 0.2s; }
+        button:hover:not(:disabled) { opacity: 0.9; }
+        button:disabled { background: #ced6e0; cursor: not-allowed; }
+
+        #jump-btn { position: absolute; bottom: 30px; right: 30px; background-color: var(--j-color); padding: 15px 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+        .explanation-footer { width: 100%; padding: 20px; background: white; border-top: 1px solid #dfe6e9; text-align: center; font-size: 1.1rem; min-height: 40px; }
+        
+        .hidden { display: none !important; }
+        .i-cap { color: var(--i-color); font-weight: bold; }
+        .j-cap { color: var(--j-color); font-weight: bold; }
+        .svg-label { font-family: 'Times New Roman', serif; font-style: italic; font-weight: bold; font-size: 20px; pointer-events: none; }
+        .q-no { font-size: 0.8rem; color: #636e72; text-transform: uppercase; letter-spacing: 1px; }
+
+        #finish-page { text-align: center; z-index: 20; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; }
+        #score-text { font-size: 3rem; font-weight: bold; margin: 20px 0; color: #2d3436; }
+
+        #orientation-msg {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px dashed #00b894;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            z-index: 50;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="side-panel">
+        <div id="primer-sidebar">
+            <h2 style="margin-top:0">Parameters</h2>
+            <div class="param-box">
+                <div class="param-row"><span>Component <span class="i-cap">î</span>:</span><span id="val-i" class="i-cap">?</span></div>
+                <div class="param-row"><span>Component <span class="j-cap">ĵ</span>:</span><span id="val-j" class="j-cap">?</span></div>
+                <hr><div class="param-row"><span>Resultant:</span><span id="val-res" style="font-weight:bold"><span class="vec">V</span></span></div>
+            </div>
+        </div>
+
+        <div id="quiz-sidebar" class="hidden">
+            <div id="q-number" class="q-no">Question 1 of 6</div>
+            <h2 style="margin-top:0">Response</h2>
+            <div class="response-section">
+                <div class="input-group">
+                    <span class="i-cap" style="width:20px">î:</span>
+                    <select id="sign-i"><option value="1">+</option><option value="-1">-</option></select>
+                    <input type="number" id="mag-i" placeholder="Mag">
+                </div>
+                <div class="input-group">
+                    <span class="j-cap" style="width:20px">ĵ:</span>
+                    <select id="sign-j"><option value="1">+</option><option value="-1">-</option></select>
+                    <input type="number" id="mag-j" placeholder="Mag">
+                </div>
+                <hr><div style="text-align:center"><span class="vec">V</span> = <span id="quiz-eqn">?</span></div>
+            </div>
+            <div id="feedback" style="font-weight:bold; margin-top:10px; text-align:center"></div>
+            <div id="quiz-orient" style="font-size:0.9rem; margin-top:5px; text-align:center; color:#2c3e50"></div>
+        </div>
+
+        <div class="controls">
+            <button id="nextBtn">Start Lesson</button>
+            <button id="prevBtn" disabled>Step Back</button>
+            <button id="homeBtn" style="background:#b2bec3">Home / Reset</button>
+        </div>
+    </div>
+
+    <div class="main-display">
+        <h1 id="page-title">Vector Decomposition Primer</h1>
+        
+        <div id="visualizer-box">
+            <div id="orientation-msg">Identify orientation: <br><span id="orient-text" style="color:#00b894"></span></div>
+            
+            <svg id="svg-canvas" width="400" height="400">
+                <line x1="0" y1="400" x2="400" y2="400" stroke="#000" stroke-width="2" />
+                <line x1="0" y1="0" x2="0" y2="400" stroke="#000" stroke-width="2" />
+                
+                <defs>
+                    <marker id="arr-i" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--i-color)" /></marker>
+                    <marker id="arr-j" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--j-color)" /></marker>
+                    <marker id="arr-main" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--arrow-light)" /></marker>
+                </defs>
+
+                <line id="path-i" x1="0" y1="0" x2="0" y2="0" stroke="var(--i-color)" stroke-width="3" visibility="hidden"/>
+                <text id="label-vx" class="svg-label i-cap" visibility="hidden">Vₓ</text>
+                <line id="path-j" x1="0" y1="0" x2="0" y2="0" stroke="var(--j-color)" stroke-width="3" visibility="hidden"/>
+                <text id="label-vy" class="svg-label j-cap" visibility="hidden">Vᵧ</text>
+
+                <line id="vec-v" x1="0" y1="0" x2="0" y2="0" stroke="var(--vector-color)" stroke-width="4" marker-end="url(#arr-main)" />
+                <g id="v-label-group">
+                    <text x="0" y="0" class="svg-label" fill="var(--vector-color)">V</text>
+                    <line x1="0" y1="-17" x2="12" y2="-17" stroke="var(--vector-color)" stroke-width="1.5" />
+                    <path d="M 9 -20 L 12 -17 L 9 -14" fill="none" stroke="var(--vector-color)" stroke-width="1.5" />
+                </g>
+            </svg>
+
+            <div id="finish-page" class="hidden">
+                <div id="score-text">0 / 6</div>
+                <p id="finish-msg" style="font-weight:bold; font-size:1.2rem;"></p>
+                <button onclick="location.reload()" style="background:var(--success)">Restart Practice</button>
+            </div>
+        </div>
+
+        <div class="explanation-footer" id="footer-text">Welcome. Click "Start Lesson" to begin.</div>
+        <button id="jump-btn">Jump to Quiz →</button>
+    </div>
+
+<script>
+    let mode = 'primer'; 
+    let primerStep = -1;
+    let quizIdx = 0;
+    let score = 0;
+    let currentVector = null;
+    let checked = false;
+
+    function generateVector() {
+        let x1 = Math.floor(Math.random() * 9) + 1; 
+        let y1 = Math.floor(Math.random() * 9) + 1;
+        let x2, y2;
+        do {
+            x2 = Math.floor(Math.random() * 9) + 1;
+            y2 = Math.floor(Math.random() * 9) + 1;
+        } while (Math.abs(x2-x1) < 2 || Math.abs(y2-y1) < 2);
+        return { tx: x1, ty: y1, dx: x2-x1, dy: y2-y1, orient: (x2-x1 > 0 ? "Rightward" : "Leftward") + " and " + (y2-y1 > 0 ? "Upward" : "Downward") };
+    }
+
+    function setVector(v) {
+        const s = 40;
+        const x1 = v.tx * s, y1 = 400 - (v.ty * s), x2 = (v.tx + v.dx) * s, y2 = 400 - ((v.ty + v.dy) * s);
+        document.getElementById('vec-v').setAttribute('x1', x1); 
+        document.getElementById('vec-v').setAttribute('y1', y1); 
+        document.getElementById('vec-v').setAttribute('x2', x2); 
+        document.getElementById('vec-v').setAttribute('y2', y2);
+        document.getElementById('v-label-group').setAttribute('transform', `translate(${(x1+x2)/2 + 15}, ${(y1+y2)/2 - 15})`);
+        document.getElementById('path-i').setAttribute('x1', x1); 
+        document.getElementById('path-i').setAttribute('y1', y1); 
+        document.getElementById('path-i').setAttribute('x2', x2); 
+        document.getElementById('path-i').setAttribute('y2', y1);
+        document.getElementById('path-j').setAttribute('x1', x2); 
+        document.getElementById('path-j').setAttribute('y1', y1); 
+        document.getElementById('path-j').setAttribute('x2', x2); 
+        document.getElementById('path-j').setAttribute('y2', y2);
+        document.getElementById('label-vx').setAttribute('x', (x1+x2)/2 - 10);
+        document.getElementById('label-vx').setAttribute('y', y1 + (v.dy >= 0 ? 25 : -15));
+        document.getElementById('label-vy').setAttribute('x', x2 + (v.dx >= 0 ? 10 : -35));
+        document.getElementById('label-vy').setAttribute('y', (y1+y2)/2);
+    }
+
+    function toggleComp(show) {
+        const v = show ? 'visible' : 'hidden';
+        ['path-i','path-j','label-vx','label-vy'].forEach(id => {
+            const el = document.getElementById(id);
+            el.setAttribute('visibility', v);
+            if (show && (id === 'path-i' || id === 'path-j')) {
+                el.setAttribute('marker-end', id === 'path-i' ? 'url(#arr-i)' : 'url(#arr-j)');
+            }
+        });
+    }
+
+    const primerData = [
+        { txt: "Observe vector V. We travel tail-to-head: horizontal then vertical.", act: () => { toggleComp(false); updateParams('?','?','<span class="vec">V</span>'); } },
+        { txt: "Step 1: Move horizontally. This is Vₓ.", act: () => { document.getElementById('path-i').setAttribute('visibility','visible'); document.getElementById('path-i').setAttribute('marker-end', 'url(#arr-i)'); document.getElementById('label-vx').setAttribute('visibility','visible'); updateParams(currentVector.dx,'?','Vₓ î'); } },
+        { txt: "Step 2: Move vertically. This is Vᵧ.", act: () => { toggleComp(true); updateParams(currentVector.dx, currentVector.dy,'Vₓ î + Vᵧ ĵ'); } },
+        { txt: "Complete! V = Vₓî + Vᵧĵ.", act: () => { document.getElementById('orientation-msg').style.display='block'; document.getElementById('orient-text').innerText = currentVector.orient; updateParams(currentVector.dx, currentVector.dy, `<span class="vec">V</span> = ${currentVector.dx}î ${currentVector.dy >=0 ? '+':''}${currentVector.dy}ĵ`); } }
+    ];
+
+    function updateParams(i, j, res) {
+        document.getElementById('val-i').innerText = i; document.getElementById('val-j').innerText = j; document.getElementById('val-res').innerHTML = res;
+    }
+
+    function startQuiz() {
+        mode = 'quiz'; quizIdx = 0; score = 0;
+        document.getElementById('primer-sidebar').classList.add('hidden');
+        document.getElementById('jump-btn').classList.add('hidden');
+        document.getElementById('prevBtn').classList.add('hidden');
+        document.getElementById('quiz-sidebar').classList.remove('hidden');
+        document.getElementById('page-title').innerText = "Component Quiz";
+        loadQ();
+    }
+
+    function loadQ() {
+        checked = false;
+        currentVector = generateVector();
+        document.getElementById('q-number').innerText = `Question ${quizIdx + 1} of 6`;
+        setVector(currentVector);
+        toggleComp(false);
+        document.getElementById('orientation-msg').style.display = 'none';
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('quiz-orient').innerText = "";
+        document.getElementById('quiz-eqn').innerText = "?";
+        document.getElementById('mag-i').value = ""; document.getElementById('mag-j').value = "";
+        document.getElementById('nextBtn').innerText = "Check Answer";
+        // Update footer immediately for quiz start
+        document.getElementById('footer-text').innerText = "Count the grid units from Tail to Head.";
+    }
+
+    function checkQ() {
+        const ui = parseInt(document.getElementById('sign-i').value) * (parseInt(document.getElementById('mag-i').value) || 0);
+        const uj = parseInt(document.getElementById('sign-j').value) * (parseInt(document.getElementById('mag-j').value) || 0);
+        toggleComp(true);
+        const isRight = (ui === currentVector.dx && uj === currentVector.dy);
+        if(isRight && !checked) score++;
+        checked = true;
+        document.getElementById('feedback').innerHTML = isRight ? "<span style='color:var(--success)'>✔ Correct!</span>" : "<span style='color:var(--error)'>✘ Incorrect</span>";
+        document.getElementById('quiz-orient').innerText = `Path: ${currentVector.orient}`;
+        document.getElementById('quiz-eqn').innerHTML = `${currentVector.dx}î ${currentVector.dy >=0 ? '+' : ''}${currentVector.dy}ĵ`;
+        document.getElementById('nextBtn').innerText = (quizIdx < 5) ? "Next Question" : "Finish Quiz";
+    }
+
+    function showFinish() {
+        document.getElementById('visualizer-box').style.backgroundImage = 'none';
+        document.getElementById('svg-canvas').classList.add('hidden');
+        document.getElementById('quiz-sidebar').classList.add('hidden');
+        document.getElementById('finish-page').classList.remove('hidden');
+        document.getElementById('score-text').innerText = `${score} / 6`;
+        // Explicitly update footer for Finish Page
+        document.getElementById('footer-text').innerText = "Practice makes perfect!";
+        const fm = document.getElementById('finish-msg');
+        if(score === 6) fm.innerText = "Well Done!";
+        else if(score === 5) fm.innerText = "Good work !! Maybe a little extra care needed";
+        else if(score === 4) fm.innerText = "Try again with extra care";
+        else fm.innerText = "Review the Primer and focus on one component at a time. You can do it !!";
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', () => {
+        if(mode === 'primer') {
+            if(primerStep < 3) { 
+                primerStep++; 
+                primerData[primerStep].act(); 
+                document.getElementById('footer-text').innerHTML = primerData[primerStep].txt; 
+                document.getElementById('nextBtn').innerText = (primerStep === 3) ? "Revise" : "Next Step";
+            } else {
+                primerStep = -1;
+                currentVector = generateVector();
+                setVector(currentVector);
+                primerData[0].act();
+                // Explicitly set the welcome text only when Start Lesson button is restored
+                document.getElementById('footer-text').innerHTML = "Welcome. Click \"Start Lesson\" to begin.";
+                document.getElementById('nextBtn').innerText = "Start Lesson";
+                document.getElementById('orientation-msg').style.display = 'none';
+            }
+            document.getElementById('prevBtn').disabled = (primerStep <= 0);
+        } else if(mode === 'quiz') {
+            if(document.getElementById('nextBtn').innerText === "Check Answer") checkQ();
+            else if(quizIdx < 5) { quizIdx++; loadQ(); }
+            else showFinish();
+        }
+    });
+
+    document.getElementById('prevBtn').addEventListener('click', () => {
+        if(primerStep > 0) { primerStep--; primerData[primerStep].act(); document.getElementById('footer-text').innerHTML = primerData[primerStep].txt; }
+        document.getElementById('prevBtn').disabled = (primerStep <= 0);
+        document.getElementById('nextBtn').innerText = "Next Step";
+    });
+
+    document.getElementById('jump-btn').addEventListener('click', startQuiz);
+    document.getElementById('homeBtn').addEventListener('click', () => location.reload());
+
+    currentVector = generateVector();
+    setVector(currentVector);
+</script>
+</body>
+</html>
