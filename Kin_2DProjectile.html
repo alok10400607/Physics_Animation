@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oblique Projectile: Component Sync</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root { --primary: #1a237e; --secondary: #d32f2f; --bg: #f8f9fa; --panel: #ffffff; --accent: #ef6c00; --vx-color: #2e7d32; --vy-color: #1976d2; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 10px; box-sizing: border-box; }
+        #app-container { display: flex; flex-direction: column; width: 100%; max-width: 1000px; gap: 15px; }
+        @media (min-width: 850px) { #app-container { flex-direction: row; align-items: flex-start; } }
+        #sidebar { width: 100%; max-width: 320px; background: var(--panel); border: 1px solid #ddd; padding: 15px; border-radius: 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
+        h2 { color: var(--primary); margin: 0 0 5px 0; font-size: 1.1rem; border-bottom: 2px solid var(--primary); padding-bottom: 5px; }
+        .control-row { display: flex; gap: 8px; align-items: center; margin-bottom: 2px; }
+        .animate-btn { flex: 1; padding: 8px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
+        .strobe-btn { background: #607d8b; margin-top: 5px; }
+        .speed-label { font-size: 0.75rem; font-weight: bold; color: #555; }
+        .speed-select { flex: 0.5; padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; font-size: 0.85rem; }
+        .section { margin-bottom: 5px; }
+        input[type=range] { width: 100%; cursor: pointer; height: 20px; }
+        .slider-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+        .val { font-weight: bold; font-family: monospace; font-size: 0.85rem; }
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 5px; border-top: 1px solid #eee; padding-top: 8px; }
+        .data-item { font-size: 0.75rem; color: #555; }
+        .data-item b { display: block; color: #000; font-size: 0.85rem; }
+        .tab-row { display: flex; gap: 4px; }
+        .tab-btn { flex: 1; padding: 10px 5px; border: 1px solid #ddd; background: #eee; cursor: pointer; font-size: 0.8rem; font-weight: bold; border-radius: 4px; color: #666; transition: 0.2s; }
+        .tab-btn.active-guide { background: #e8eaf6; border: 1px solid var(--primary); color: var(--primary); }
+        .tab-btn.active-challenge { background: #fffcf5; border: 1px solid var(--accent); color: var(--accent); }
+        .nav-row { display: flex; justify-content: center; align-items: center; gap: 15px; padding: 5px 0; }
+        .nav-btn { cursor: pointer; background: #444; border: none; font-size: 1.2rem; color: white; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; }
+        .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        #stepCounter { font-size: 0.85rem; font-weight: bold; color: #666; }
+        #main-region { flex: 1; display: flex; flex-direction: column; gap: 15px; }
+        #canvas-wrapper { position: relative; background: white; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        canvas { display: block; width: 100%; height: auto; touch-action: none; }
+        .axis-label { position: absolute; font-weight: bold; font-style: italic; font-size: 0.8rem; pointer-events: none; }
+        #text-display { background: #fff; padding: 15px 20px; border: 1px solid #ddd; border-radius: 8px; min-height: 80px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); line-height: 1.6; font-size: 0.95rem; }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div id="sidebar">
+        <h2>Oblique Projectile</h2>
+        <div class="control-row">
+            <button id="animBtn" class="animate-btn" onclick="toggleAnimation()">▶ Play</button>
+            <span class="speed-label">Speed:</span>
+            <select id="speedSel" class="speed-select">
+                <option value="1">1x</option>
+                <option value="0.5">0.5x</option>
+                <option value="0.2">0.2x</option>
+            </select>
+        </div>
+        <div class="control-row">
+            <button id="strobeBtn" class="animate-btn strobe-btn" onclick="strobeStep()">Time Increment \(\Delta t = 1\) sec</button>
+        </div>
+        <div class="section">
+            <div class="slider-header">
+                <label style="font-size:0.75rem">\(v_x\) (5-20 m/s):</label>
+                <span id="valVx" class="val" style="color:var(--vx-color)">15 m/s</span>
+            </div>
+            <input type="range" id="vxInput" min="5" max="20" step="1" value="15">
+        </div>
+        <div class="section">
+            <div class="slider-header">
+                <label style="font-size:0.75rem">\(v_y\) (10-30 m/s):</label>
+                <span id="valVy" class="val" style="color:var(--vy-color)">20 m/s</span>
+            </div>
+            <input type="range" id="vyInput" min="10" max="30" step="5" value="20">
+        </div>
+        <div class="data-grid">
+            <div class="data-item">Speed (\(u\)) <b id="uVal">0.0 m/s</b></div>
+            <div class="data-item">Angle (\(\theta\)) <b id="angleVal">0.0°</b></div>
+            <div class="data-item">Range (\(R\)) <b id="rVal">0.0 m</b></div>
+            <div class="data-item">Max H (\(H\)) <b id="hVal">0.0 m</b></div>
+        </div>
+        <hr style="width:100%; border:0; border-top:1px solid #eee; margin:5px 0;">
+        <div class="tab-row">
+            <button id="tab-guide" class="tab-btn active-guide" onclick="switchTab('guide')">Guide Me</button>
+            <button id="tab-challenge" class="tab-btn" onclick="switchTab('challenge')">Challenges</button>
+        </div>
+        <div class="nav-row">
+            <button class="nav-btn" onclick="changeStep(-1)" id="prevBtn">◀</button>
+            <span id="stepCounter">1 / 6</span>
+            <button class="nav-btn" onclick="changeStep(1)" id="nextBtn">▶</button>
+        </div>
+    </div>
+    <div id="main-region">
+        <div id="canvas-wrapper">
+            <canvas id="projCanvas" width="600" height="400"></canvas>
+            <div class="axis-label" style="top: 10px; left: 65px;">\(y\) (m)</div>
+            <div class="axis-label" style="bottom: 10px; right: 20px;">\(x\) (m)</div>
+        </div>
+        <div id="text-display">
+            <div id="content-text"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('projCanvas');
+    const ctx = canvas.getContext('2d');
+    const vxInput = document.getElementById('vxInput');
+    const vyInput = document.getElementById('vyInput');
+    const animBtn = document.getElementById('animBtn');
+    const speedSel = document.getElementById('speedSel');
+
+    const g = 10;
+    const origin = { x: 40, y: 360 };
+    const scaleX = 4.5; 
+    const scaleY = 6.4; 
+    const colorRed = "#d32f2f";
+    const colorBlue = "#1976d2";
+    const colorGreen = "#2e7d32";
+
+    let isAnimating = false, animT = 0, strobePoints = [];
+    let activeTab = 'guide', gStep = 0, cStep = 0;
+
+    const guideLines = [
+        "1. <b>Three Distinct Motions:</b> Observe the <b style='color:"+colorRed+"'>Red</b> projectile and its two independent components: the <b style='color:"+colorGreen+"'>Green</b> horizontal motion (x-axis) and the <b style='color:"+colorBlue+"'>Blue</b> vertical motion (y-axis).",
+        "2. <b>Strobe Effect:</b> Click <b>Time Increment \\(\\Delta t = 1\\) sec</b>. Each click advances time and leaves a marker. Notice the horizontal gaps between Green markers are identical, showing constant horizontal velocity.",
+        "3. <b>Independence:</b> Adjust the velocity component \\(v_x\\) while keeping \\(v_y\\) constant. Observe the effect on Maximum Height (\\(H\\)) and Range (\\(R\\)). Write down your observations and the reasoning.",
+        "4. <b>Vertical Influence:</b> Adjust the velocity component \\(v_y\\) while keeping \\(v_x\\) constant. Observe the effect on Maximum Height (\\(H\\)) and Range (\\(R\\)). Deduce the reason for the change in \\(H\\) and \\(R\\) due to the change in \\(v_y\\).",
+        "5. <b>Physical Mapping:</b> The projectile's position \\((x, y)\\) at any time \\(t\\) is determined by the equations \\(x = v_x t\\) and \\(y = v_y t - \\frac{1}{2}gt^2\\).",
+        "6. <b>2D Motion as Independent 1D Motions:</b> Projectile motion can be analyzed as a superposition of uniform horizontal motion and uniformly accelerated vertical motion."
+    ];
+
+    const challengeLines = [
+        "<b>Challenge 1:</b> Set \\(v_y = 20 m/s\\). How many clicks of \\(\\Delta t\\) does it take for the blue dot to reach the ground again?",
+        "<b>Challenge 2:</b> Find a combination of components where the horizontal strobe markers are exactly 20m apart (one full grid block).",
+        "<b>Challenge 3:</b> What is the vertical speed of the blue dot at the exact moment it hits the maximum height marker?",
+        "<b>Challenge 4:</b> Set \\(v_x = v_y\\). What is the launch angle? Verify with the data grid.",
+        "<b>Challenge 5:</b> Observe the strobe markers. Why do the vertical distances between dots decrease as the projectile reaches the peak?",
+        "<b>Challenge 6:</b> Find the Range when \\(v_x = 20 m/s\\) and \\(v_y = 10 m/s\\). Verify using the grid."
+    ];
+
+    function switchTab(tab) {
+        activeTab = tab;
+        document.getElementById('tab-guide').className = (tab === 'guide') ? "tab-btn active-guide" : "tab-btn";
+        document.getElementById('tab-challenge').className = (tab === 'challenge') ? "tab-btn active-challenge" : "tab-btn";
+        renderContent();
+    }
+
+    function changeStep(dir) {
+        if(activeTab === 'guide') gStep = Math.max(0, Math.min(guideLines.length - 1, gStep + dir));
+        else cStep = Math.max(0, Math.min(challengeLines.length - 1, cStep + dir));
+        renderContent();
+    }
+
+    function renderContent() {
+        const text = document.getElementById('content-text');
+        const counter = document.getElementById('stepCounter');
+        const curArr = (activeTab === 'guide') ? guideLines : challengeLines;
+        const curStep = (activeTab === 'guide') ? gStep : cStep;
+        text.innerHTML = curArr[curStep];
+        counter.innerText = `${curStep + 1} / ${curArr.length}`;
+        document.getElementById('prevBtn').disabled = (curStep === 0);
+        document.getElementById('nextBtn').disabled = (curStep === curArr.length - 1);
+        if (window.MathJax) MathJax.typesetPromise([text]).catch(() => {});
+    }
+
+    function drawGrid() {
+        ctx.strokeStyle = "#f0f0f0"; ctx.lineWidth = 1;
+        for(let x=0; x<=120; x+=20) {
+            let px = origin.x + x*scaleX;
+            ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, origin.y+5); ctx.stroke();
+            ctx.fillStyle = "#aaa"; ctx.font = "10px Arial";
+            ctx.fillText(x+"m", px - 10, origin.y + 15);
+        }
+        for(let y=0; y<=50; y+=5) {
+            let py = origin.y - y*scaleY;
+            ctx.beginPath(); ctx.moveTo(origin.x-5, py); ctx.lineTo(canvas.width, py); ctx.stroke();
+            if(y % 10 === 0) { ctx.fillStyle = "#aaa"; ctx.fillText(y+"m", 10, py + 4); }
+        }
+        ctx.strokeStyle = "#444"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, origin.y); ctx.lineTo(canvas.width, origin.y); ctx.stroke();
+    }
+
+    function update(t) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        const vx = parseFloat(vxInput.value);
+        const vy = parseFloat(vyInput.value);
+        const tof = (2 * vy) / g;
+        document.getElementById('valVx').innerText = vx + " m/s";
+        document.getElementById('valVy').innerText = vy + " m/s";
+        document.getElementById('uVal').innerText = Math.sqrt(vx*vx + vy*vy).toFixed(1) + " m/s";
+        document.getElementById('angleVal').innerText = (Math.atan2(vy, vx)*180/Math.PI).toFixed(1) + "°";
+        document.getElementById('rVal').innerText = (vx * tof).toFixed(1) + " m";
+        document.getElementById('hVal').innerText = (vy*vy/(2*g)).toFixed(1) + " m";
+        ctx.setLineDash([4, 4]); ctx.strokeStyle = "#ddd"; ctx.beginPath();
+        for(let p=0; p<=tof; p+=0.1) { ctx.lineTo(origin.x + (vx*p)*scaleX, origin.y - (vy*p - 0.5*g*p*p)*scaleY); }
+        ctx.stroke(); ctx.setLineDash([]);
+        strobePoints.forEach(pt => {
+            const sx = origin.x + pt.x * scaleX; const sy = origin.y - pt.y * scaleY;
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = colorBlue; ctx.beginPath(); ctx.arc(origin.x, sy, 4, 0, 7); ctx.fill();
+            ctx.fillStyle = colorGreen; ctx.beginPath(); ctx.arc(sx, origin.y, 4, 0, 7); ctx.fill();
+            ctx.fillStyle = colorRed; ctx.beginPath(); ctx.arc(sx, sy, 5, 0, 7); ctx.fill();
+            ctx.globalAlpha = 1.0;
+        });
+        if (t !== null) {
+            const ct = Math.min(t, tof); const cx = vx * ct; const cy = vy * ct - 0.5 * g * ct * ct;
+            const px = origin.x + cx * scaleX; const py = origin.y - cy * scaleY;
+            ctx.setLineDash([2, 2]); ctx.strokeStyle = "#ccc";
+            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, origin.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(origin.x, py); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = colorBlue; ctx.beginPath(); ctx.arc(origin.x, py, 6, 0, 7); ctx.fill();
+            ctx.fillStyle = colorGreen; ctx.beginPath(); ctx.arc(px, origin.y, 6, 0, 7); ctx.fill();
+            ctx.fillStyle = colorRed; ctx.beginPath(); ctx.arc(px, py, 8, 0, 7); ctx.fill();
+        }
+    }
+
+    function strobeStep() {
+        if (isAnimating) toggleAnimation();
+        const vx = parseFloat(vxInput.value); const vy = parseFloat(vyInput.value); const tof = (2 * vy) / g;
+        if (animT >= tof) { animT = 0; strobePoints = []; }
+        animT = Math.min(animT + 1, tof);
+        strobePoints.push({ x: vx * animT, y: vy * animT - 0.5 * g * animT * animT });
+        update(animT);
+    }
+
+    function toggleAnimation() {
+        isAnimating = !isAnimating;
+        if (isAnimating) { strobePoints = []; animT = 0; }
+        animBtn.innerText = isAnimating ? "■ Stop" : "▶ Play";
+        if (isAnimating) animate();
+    }
+
+    function animate() {
+        if (!isAnimating) return;
+        const speed = parseFloat(speedSel.value);
+        animT += 0.04 * speed;
+        const tof = (2 * parseFloat(vyInput.value)) / g;
+        if (animT > tof + 0.5) animT = 0;
+        update(animT);
+        requestAnimationFrame(animate);
+    }
+
+    function handleInteraction(e) {
+        if (isAnimating) return;
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const sc = canvas.width / rect.width;
+        let t = ((clientX - rect.left) * sc - origin.x) / (parseFloat(vxInput.value) * scaleX);
+        if(t >= 0) { strobePoints = []; update(t); }
+    }
+
+    canvas.addEventListener('mousemove', handleInteraction);
+    canvas.addEventListener('touchmove', (e) => { handleInteraction(e); e.preventDefault(); }, { passive: false });
+    vxInput.oninput = () => { animT = 0; strobePoints = []; update(0); };
+    vyInput.oninput = () => { animT = 0; strobePoints = []; update(0); };
+    switchTab('guide');
+    update(0);
+</script>
+</body>
+</html>
