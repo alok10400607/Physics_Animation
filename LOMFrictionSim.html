@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Simulation: Incline & Friction</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --panel-bg: #ffffff;
+            --primary: #2563eb;
+            --vector-p: #059669; /* Green */
+            --vector-f: #d97706; /* Orange */
+            --vector-g: #dc2626; /* Red */
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr 320px;
+            gap: 15px;
+            padding: 15px;
+            flex-grow: 1;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            overflow-y: auto;
+        }
+
+        #viewport {
+            background: #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        canvas {
+            background: white;
+            border-radius: 8px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .result-card {
+            background: #f8fafc;
+            border-left: 5px solid var(--primary);
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .label { font-size: 0.75rem; color: #64748b; font-weight: bold; text-transform: uppercase; }
+        .value { font-size: 1.25rem; font-weight: bold; color: #0f172a; }
+
+        input[type=range] { width: 100%; margin: 15px 0; cursor: pointer; }
+
+        /* Updated Guide Panel Styling */
+        .guide-container {
+            grid-column: 1 / -1;
+            background: #ffffff;
+            color: #000000;
+            padding: 20px;
+            border: 2px solid #cbd5e1;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 0 15px 15px 15px;
+        }
+
+        .btn-row { display: flex; justify-content: space-between; align-items: center; }
+        
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.95rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background 0.2s;
+        }
+
+        button:hover { background: #1d4ed8; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        #qCounter { font-weight: bold; color: #64748b; }
+
+        .legend-box {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.95);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 13px;
+            line-height: 1.6;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-layout">
+    <div class="panel">
+        <h3 style="margin-top:0">Theory</h3>
+        <p>1. <strong>Coordinate System</strong>:<br> \(+x\): up the slope<br> \(+y\): perpendicular upwards</p>
+        <p>2. <strong>X-Force Components</strong>:<br>
+           • Applied: \(+P\) & \(+3\text{ N}\)<br>
+           • Gravity (\(W_x\)): \(-mg \sin(45^\circ) \approx -70.71\text{ N}\)<br>
+           • Friction (\(f\)): Self-adjusting
+        </p>
+        <p>3. <strong>Maximum Friction</strong>:<br>
+           \(f_{s,max} = \mu mg \cos(45^\circ) \approx \mathbf{42.43\text{ N}}\)
+        </p>
+    </div>
+
+    <div class="panel" id="viewport">
+        <div class="legend-box">
+            <span style="color:var(--vector-g)">●</span> \(W_x\) (Gravity)<br>
+            <span style="color:var(--vector-p)">●</span> \(P + 3\text{N}\) (Applied)<br>
+            <span style="color:var(--vector-f)">●</span> \(f\) (Friction)
+        </div>
+        <canvas id="physicsCanvas" width="600" height="400"></canvas>
+    </div>
+
+    <div class="panel">
+        <h3>Controls</h3>
+        <label>Force \(P\): <span id="pDisplay" style="color:var(--primary); font-weight:bold;">0.0 N</span></label>
+        <input type="range" id="pSlider" min="0" max="100" value="0" step="0.1">
+
+        <h3 style="margin-top:20px; border-top:1px solid #eee; padding-top:10px;">Analysis</h3>
+        <div class="result-card">
+            <div class="label">Friction \(f\)</div>
+            <div class="value" id="fVal">0.0 N</div>
+            <div id="fDir" style="font-size: 0.8rem; color: #64748b;">--</div>
+        </div>
+        <div class="result-card">
+            <div class="label">Acceleration \(a\)</div>
+            <div class="value" id="aVal">0.0 m/s²</div>
+            <div id="aState" style="font-weight:bold;">--</div>
+        </div>
+    </div>
+
+    <div class="guide-container">
+        <div id="qText" style="font-size: 1.15rem; min-height: 50px; font-weight: 500;"></div>
+        <div class="btn-row">
+            <button id="prevBtn">Previous</button>
+            <span id="qCounter"></span>
+            <button id="nextBtn">Next</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('physicsCanvas');
+    const ctx = canvas.getContext('2d');
+    const pSlider = document.getElementById('pSlider');
+
+    // Physics constants
+    const mass = 10, g = 10, mu = 0.6, angle = Math.PI / 4;
+    const Wx = -mass * g * Math.sin(angle); 
+    const fmax = mu * mass * g * Math.cos(angle); 
+    const fixed3 = 3;
+
+    function update() {
+        const P = parseFloat(pSlider.value);
+        document.getElementById('pDisplay').innerText = P.toFixed(1) + " N";
+
+        let Fext = P + fixed3 + Wx;
+        let f, a, state;
+
+        if (Fext < -fmax) {
+            f = fmax;
+            a = (Fext + f) / mass;
+            state = "Sliding Downward";
+        } else if (Fext > fmax) {
+            f = -fmax;
+            a = (Fext + f) / mass;
+            state = "Sliding Upward";
+        } else {
+            f = -Fext;
+            a = 0;
+            state = "Static Equilibrium";
+        }
+
+        document.getElementById('fVal').innerText = (f >= 0 ? "+" : "") + f.toFixed(2) + " N";
+        document.getElementById('fDir').innerText = f > 0 ? "Up-slope (+x)" : (f < 0 ? "Down-slope (-x)" : "Zero Friction");
+        document.getElementById('aVal').innerText = Math.abs(a).toFixed(2) + " m/s²";
+        document.getElementById('aState').innerText = state;
+        document.getElementById('aState').style.color = a === 0 ? "#2563eb" : "#dc2626";
+
+        draw(P, f);
+    }
+
+    function draw(P, f) {
+        ctx.clearRect(0,0,600,400);
+        ctx.save();
+        ctx.translate(300, 200);
+        ctx.rotate(-angle);
+
+        // Slope
+        ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(-400, 40); ctx.lineTo(400, 40); ctx.stroke();
+
+        // Coordinate Axes
+        ctx.setLineDash([5, 5]); ctx.strokeStyle = "rgba(0,0,0,0.15)";
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(120, 0); ctx.stroke(); 
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0, -120); ctx.stroke(); 
+        ctx.setLineDash([]); ctx.fillStyle = "#94a3b8"; ctx.font = "10px Arial";
+        ctx.fillText("+x", 125, 5); ctx.fillText("+y", -5, -125);
+
+        // Block
+        ctx.fillStyle = "#f8fafc"; ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 2;
+        ctx.fillRect(-40, -40, 80, 80); ctx.strokeRect(-40, -40, 80, 80);
+
+        // Vectors
+        const s = 2.0;
+        drawVec(0, 0, Wx * s, 0, "#dc2626", 3, "W_x");
+        drawVec(0, -10, (P + fixed3) * s, -10, "#059669", 4, "P+3N");
+        if(Math.abs(f) > 0.1) drawVec(0, 20, f * s, 20, "#d97706", 3, "f");
+
+        ctx.restore();
+    }
+
+    function drawVec(x, y, len, y2, color, width, label) {
+        if (Math.abs(len) < 2) return;
+        ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = width;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y); ctx.stroke();
+        const head = len > 0 ? 8 : -8;
+        ctx.beginPath(); ctx.moveTo(x + len, y);
+        ctx.lineTo(x + len - head, y - 5); ctx.lineTo(x + len - head, y + 5);
+        ctx.fill();
+        ctx.font = "italic 11px serif"; ctx.fillText(label, x + len/2 - 10, y - 12);
+    }
+
+    const questions = [
+        "Q1: What happens when \\(P = 0\\)? Observe the friction vector (orange) and the acceleration. Why is the block unable to remain at rest?",
+        "Q2: Will the maximum possible static friction (\\(f_{s,max}\\)) change if you change \\(P\\)? Explain based on the Normal force component.",
+        "Q3: What happens to the friction vector when \\(P\\) is increased beyond the minimum value needed to prevent downward sliding?",
+        "Q4: Can you find a value of \\(P\\) where the friction force becomes exactly zero? Explain why the block doesn't move at this point.",
+        "Q5: What would happen when \\(P\\) is increased beyond the point where the friction force has become zero?"
+    ];
+
+    let qIdx = 0;
+    function updateQ() {
+        document.getElementById('qText').innerHTML = questions[qIdx];
+        document.getElementById('qCounter').innerText = `Exercise ${qIdx + 1} of 5`;
+        document.getElementById('prevBtn').disabled = qIdx === 0;
+        document.getElementById('nextBtn').disabled = qIdx === questions.length - 1;
+        MathJax.typesetPromise();
+    }
+    document.getElementById('nextBtn').onclick = () => { qIdx++; updateQ(); };
+    document.getElementById('prevBtn').onclick = () => { qIdx--; updateQ(); };
+
+    pSlider.oninput = update;
+    update(); updateQ();
+</script>
+</body>
+</html>
