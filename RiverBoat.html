@@ -190,20 +190,21 @@
     ];
     let activeBuoys = JSON.parse(JSON.stringify(buoys));
 
-    // REFINED GUIDE MESSAGES
     const guideMessages = [
-        "1. **Keep $v_{BR}$ constant while varying $\\theta$.** Observe how this shifts the vector diagram and changes the ground velocity components $v_{Bx}$ and $v_{By}$.",
-        "2. **Identify the parameters controlling 'Time of Crossing' vs. 'Drift'.** Develop an intuitive grasp of why $v_{By}$ determines time while $v_{Bx}$ determines horizontal displacement.",
-        "3. **Experiment with the steering angle $\\theta$.** Find the specific values needed to **minimize crossing time** or to **minimize drift** (zero drift).",
-        "4. **Visualize the trajectory mentally** before starting the simulation. Start the boat and observe if your predicted path matches the actual result.",
-        "5. **Target Practice:** Adjust the parameters precisely so that the boat's path intersects the **Blue** or **Green** buoy."
+        "1. Keep $v_{BR}$ constant while varying $\\theta$. Observe how this shifts the vector diagram and changes the ground velocity components $v_{Bx}$ and $v_{By}$.",
+        "2. Identify the specific parameters controlling 'Time of Crossing' vs. 'Drift.' Develop an intuitive grasp of why $v_{By}$ determines time while $v_{Bx}$ determines horizontal displacement.",
+        "3. Experiment with the steering angle $\\theta$. Specifically, find the values needed to minimize crossing time or to minimize drift (zero drift).",
+        "4. Visualize the trajectory mentally before starting the simulation. Start the boat and observe if your predicted path matches the actual result.",
+        "5. Target Practice: Adjust the parameters precisely so that the boat's path intersects the Blue or Green buoy."
     ];
 
+    // INTEGRATED REFINED CHALLENGE MESSAGES
     const challengeMessages = [
-        "1. Define the condition for the boat to cross the river in minimum time (keeping $v_{BR}$ constant) and verify with sim?",
-        "2. Define the condition for maximum drift, calculate its value for given range of parameters and verify with sim.",
-        "3. Define the condition for the boat to touch Green / Blue buoy, calculate the value of parameters needed and verify with sim.",
-        "4. What is the maximum updrift that can be achieved?"
+        "1. For $v_{BR} = 4$ m/s, calculate the minimum time of crossing and verify your result by setting the optimal simulation parameters.",
+        "2. The Green buoy starts at $(4\\text{m}, 15\\text{m})$. Configure the boat's parameters so that its trajectory intercepts this buoy.",
+        "3. Is zero drift achievable when $v_{BR} = 2$ m/s? Provide a logical justification for your conclusion based on the river's velocity.",
+        "4. What is the maximum possible upstream drift within the available parameter range? Describe the mathematical approach used to find this solution.",
+        "5. When the steering angle $\\theta$ is set to $0^\\circ$, the boat consistently intercepts the Red buoy. Explain the physics behind this in one sentence."
     ];
 
     let currentMode = 'guide', guideIndex = 0, challengeIndex = 0;
@@ -242,6 +243,10 @@
         for (let j = Math.floor(-originX/MTP/10)*10; j <= Math.ceil((cW-originX)/MTP/10)*10; j += 10) {
             const gx = originX + j * MTP; ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, cH); ctx.stroke();
         }
+
+        ctx.fillStyle = "#34495e";
+        ctx.font = "italic 13px Arial";
+        ctx.fillText("Buoys A, B and C float with the river velocity", 15, endY + 20);
 
         ctx.setLineDash([5, 5]); ctx.strokeStyle = "rgba(255, 0, 0, 0.6)"; ctx.lineWidth = 2; ctx.beginPath();
         path.forEach((p, i) => {
