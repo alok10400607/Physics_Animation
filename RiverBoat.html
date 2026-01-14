@@ -2,145 +2,155 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>River-Boat Simulation (Pedagogical Version)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>River-Boat Simulation (Enhanced Icon)</title>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                processEscapes: true
+            },
+            options: {
+                enableMenu: false
+            },
+            chtml: {
+                displayAlign: 'center',
+                displayIndent: '0'
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
     <style>
         :root {
             --panel-bg: #f4f4f9;
             --border-color: #ccc;
             --accent-color: #2c3e50;
+            --touch-target: 44px;
+            --guide-height: 180px; 
+            --side-panel-width: 320px; 
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             display: flex;
+            flex-direction: row;
             height: 100vh;
             overflow: hidden;
             background-color: #e0e0e0;
+            touch-action: none; 
         }
 
-        /* Left Side Panel */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            #side-panel {
+                width: 100% !important;
+                height: 40% !important;
+                border-right: none !important;
+                border-top: 2px solid var(--border-color);
+                order: 2;
+                overflow-y: auto;
+            }
+            #main-area { order: 1; flex: 1; }
+        }
+
         #side-panel {
-            width: 280px;
+            width: var(--side-panel-width);
+            flex-shrink: 0;
             background: var(--panel-bg);
             border-right: 2px solid var(--border-color);
-            padding: 10px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 8px; 
+            gap: 10px;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-            z-index: 10;
+            z-index: 100;
         }
 
-        h2 { font-size: 0.95rem; margin: 0; color: var(--accent-color); border-bottom: 1px solid #ddd; padding-bottom: 3px; }
-        .param-group { background: white; padding: 8px; border-radius: 5px; border: 1px solid #ddd; }
-        .label-val { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.85rem; margin-bottom: 3px; }
-        input[type=range] { width: 100%; cursor: pointer; height: 15px; }
-        
-        .btn-group { display: flex; gap: 5px; }
-        button { flex: 1; padding: 8px; cursor: pointer; font-weight: bold; border-radius: 4px; border: 1px solid #999; font-size: 0.85rem; }
+        h2 { font-size: 0.9rem; margin: 0; color: var(--accent-color); border-bottom: 1px solid #ddd; padding-bottom: 3px; }
+        .param-group { background: white; padding: 10px; border-radius: 6px; border: 1px solid #ddd; }
+        .label-val { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.85rem; margin-bottom: 4px; }
+        input[type=range] { width: 100%; height: 30px; cursor: pointer; accent-color: var(--accent-color); }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 5px; }
+        button { height: var(--touch-target); cursor: pointer; font-weight: bold; border-radius: 4px; border: 1px solid #999; font-size: 0.85rem; }
         #play-btn { background: #4CAF50; color: white; border: none; }
-        #play-btn.paused { background: #f39c12; }
         #reset-btn { background: #e74c3c; color: white; border: none; }
 
-        #live-data-section {
-            margin-top: auto;
-            border-top: 2px solid #ddd;
-            padding-top: 10px;
-        }
-
-        /* Simulation Canvas Area */
-        #main-area {
-            flex-grow: 1;
+        #main-area { flex-grow: 1; display: flex; flex-direction: column; background: #fff; position: relative; }
+        #canvas-container { flex-grow: 1; background-color: #b3e5fc; overflow: hidden; position: relative; min-height: 0; }
+        
+        #bank-button-container {
+            position: absolute;
+            width: 100%;
             display: flex;
-            flex-direction: column;
-            background: #fff;
+            justify-content: center;
+            gap: 40px;
+            pointer-events: none;
+            z-index: 50;
         }
+        .mode-btn { pointer-events: auto; background: rgba(52, 73, 94, 0.9); color: #bdc3c7; border: 1px solid #7f8c8d; min-width: 130px; }
+        .mode-btn.active { background: #3498db; color: white; border-color: #2980b9; }
 
-        #canvas-container {
-            flex-grow: 1;
-            background-color: #b3e5fc; 
-            overflow: hidden;
-        }
-
-        /* Updated Observation Guide with Buttons */
-        #observation-guide-container {
-            height: 70px;
-            background: #2c3e50;
+        #interactive-guide-container {
+            height: var(--guide-height); 
+            flex-shrink: 0;
+            background: #2c3e50; 
             color: white;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 15px;
-            border-top: 3px solid #1a252f;
-        }
-
-        #guide-text {
-            flex-grow: 1;
-            text-align: center;
-            font-size: 0.95rem;
             padding: 0 20px;
-            font-weight: 500;
-            line-height: 1.4;
+            border-top: 3px solid #1a252f;
+            box-sizing: border-box;
         }
 
-        .nav-btn {
-            background: #34495e;
-            color: white;
-            border: 1px solid #5d6d7e;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: background 0.2s;
+        #guide-text { 
+            flex: 1;
+            text-align: center; 
+            font-size: 1.1rem; 
+            line-height: 1.6; 
+            padding: 0 20px;
+            display: block; 
+            margin-top: auto;
+            margin-bottom: auto;
+            overflow-y: auto;
         }
 
-        .nav-btn:hover { background: #5d6d7e; }
+        mjx-container {
+            margin: 0 !important;
+            padding: 0 !important;
+            vertical-align: middle !important;
+        }
 
-        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 0.8rem; }
-        .data-item { background: #fff; padding: 5px; border: 1px solid #ddd; border-radius: 3px; }
+        .nav-btn { flex-shrink: 0; background: #34495e; color: white; border: 1px solid #5d6d7e; width: 80px; height: 50px; }
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+        .data-item { background: #fff; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: center; font-weight: bold; color: #333; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
     <div id="side-panel">
-        <h2>Fixed Parameters</h2>
+        <h2>Parameters & Controls</h2>
         <div class="param-group">
-            <div class="label-val"><span>v<sub>R</sub> (River):</span> <span>3.0 m/s</span></div>
-            <div class="label-val"><span>Width (W):</span> <span>20.0 m</span></div>
+            <div class="label-val"><span>$v_R$ (River): 3.0 m/s</span> <span>W: 20m</span></div>
         </div>
-
-        <h2>Controls</h2>
         <div class="param-group">
-            <div class="label-val"><span>v<sub>BR</sub> (Boat):</span> <span id="vbr-val">4 m/s</span></div>
+            <div class="label-val"><span>$v_{BR}$ (Boat):</span> <span id="vbr-val">4 m/s</span></div>
             <input type="range" id="vbr-slider" min="2" max="6" step="1" value="4">
-        </div>
-
-        <div class="param-group">
-            <div class="label-val"><span>Angle (&theta;):</span> <span id="theta-val">0°</span></div>
+            <div class="label-val" style="margin-top:8px;"><span>Angle ($\theta$):</span> <span id="theta-val">0&deg;</span></div>
             <input type="range" id="theta-slider" min="-45" max="45" step="5" value="0">
         </div>
-
-        <div class="param-group">
-            <div class="label-val">Speed</div>
-            <select id="time-scale" style="width: 100%; padding: 4px; font-size: 0.8rem;">
-                <option value="1">1.0x (Normal)</option>
-                <option value="0.5">0.5x</option>
-                <option value="0.2">0.2x</option>
-            </select>
-        </div>
-
-        <div class="btn-group">
+        <div class="btn-grid">
             <button id="play-btn">PLAY</button>
             <button id="reset-btn">RESET</button>
         </div>
-
-        <div id="live-data-section">
-            <h2>Live Data</h2>
+        <h2>Live Data</h2>
+        <div class="param-group">
             <div class="data-grid">
-                <div class="data-item">v<sub>Bx</sub>: <span id="vbx-ui">0.0</span> m/s</div>
-                <div class="data-item">v<sub>By</sub>: <span id="vby-ui">0.0</span> m/s</div>
+                <div class="data-item">$v_{Bx}$: <span id="vbx-ui">3.0</span></div>
+                <div class="data-item">$v_{By}$: <span id="vby-ui">4.0</span></div>
                 <div class="data-item">Time: <span id="time-ui">0.0</span>s</div>
                 <div class="data-item">Drift: <span id="drift-ui">0.0</span>m</div>
             </div>
@@ -149,9 +159,13 @@
 
     <div id="main-area">
         <div id="canvas-container">
+            <div id="bank-button-container">
+                <button class="mode-btn active" id="btn-guide">GUIDE ME</button>
+                <button class="mode-btn" id="btn-challenge">CHALLENGE ME</button>
+            </div>
             <canvas id="simCanvas"></canvas>
         </div>
-        <div id="observation-guide-container">
+        <div id="interactive-guide-container">
             <button class="nav-btn" id="prev-guide">PREV</button>
             <div id="guide-text"></div>
             <button class="nav-btn" id="next-guide">NEXT</button>
@@ -162,11 +176,12 @@
     const canvas = document.getElementById('simCanvas');
     const ctx = canvas.getContext('2d');
     const container = document.getElementById('canvas-container');
+    const bankControls = document.getElementById('bank-button-container');
 
     const VR = 3.0, W = 20.0;
-    let vBR = 4.0, thetaDeg = 0, isRunning = false, time = 0, timeScale = 1.0;
+    let vBR = 4.0, thetaDeg = 0, isRunning = false, time = 0;
     let boat = { x: 0, y: 0 }, path = [];
-    const MTP = 15; 
+    let MTP = 20, dpr = window.devicePixelRatio || 1;
 
     let buoys = [
         { label: 'A', x: -4, y: 15, color: 'blue' },
@@ -175,118 +190,137 @@
     ];
     let activeBuoys = JSON.parse(JSON.stringify(buoys));
 
-    // Updated Observation Guide Text
-    const guidanceMessages = [
-        "1. Observe change in vector diagram with changes made in control panel.",
-        "2. Think of a way to control vBx and vBy using control panel.",
-        "3. Note how vBx and vBy changes with the change in θ. What value of θ maximizes vBy?",
-        "4. The drift depends on vBx, and it is zero when its value is zero. What adjustment would lead to zero drift?",
-        "5. Try to set the parameters such that the boat touches the Blue or Green buoy on its path."
+    // REFINED GUIDE MESSAGES
+    const guideMessages = [
+        "1. **Keep $v_{BR}$ constant while varying $\\theta$.** Observe how this shifts the vector diagram and changes the ground velocity components $v_{Bx}$ and $v_{By}$.",
+        "2. **Identify the parameters controlling 'Time of Crossing' vs. 'Drift'.** Develop an intuitive grasp of why $v_{By}$ determines time while $v_{Bx}$ determines horizontal displacement.",
+        "3. **Experiment with the steering angle $\\theta$.** Find the specific values needed to **minimize crossing time** or to **minimize drift** (zero drift).",
+        "4. **Visualize the trajectory mentally** before starting the simulation. Start the boat and observe if your predicted path matches the actual result.",
+        "5. **Target Practice:** Adjust the parameters precisely so that the boat's path intersects the **Blue** or **Green** buoy."
     ];
-    let guideIndex = 0;
+
+    const challengeMessages = [
+        "1. Define the condition for the boat to cross the river in minimum time (keeping $v_{BR}$ constant) and verify with sim?",
+        "2. Define the condition for maximum drift, calculate its value for given range of parameters and verify with sim.",
+        "3. Define the condition for the boat to touch Green / Blue buoy, calculate the value of parameters needed and verify with sim.",
+        "4. What is the maximum updrift that can be achieved?"
+    ];
+
+    let currentMode = 'guide', guideIndex = 0, challengeIndex = 0;
 
     function reset() {
-        isRunning = false;
-        time = 0;
-        boat = { x: 0, y: 0 };
-        path = [];
+        isRunning = false; time = 0; boat = { x: 0, y: 0 }; path = [];
         activeBuoys = JSON.parse(JSON.stringify(buoys));
         document.getElementById('play-btn').textContent = "PLAY";
-        updateUI();
-        draw();
+        updateUI(); draw();
     }
 
     function update() {
         if (!isRunning) return;
-        const dt = (1/60) * timeScale;
-        const rad = (thetaDeg * Math.PI) / 180;
-        const vBy = vBR * Math.cos(rad);
-        const vBx = VR + vBR * Math.sin(rad);
-
-        boat.y += vBy * dt;
-        boat.x += vBx * dt;
+        const dt = (1/60), rad = (thetaDeg * Math.PI) / 180;
+        const vBy = vBR * Math.cos(rad), vBx = VR + vBR * Math.sin(rad);
+        boat.y += vBy * dt; boat.x += vBx * dt;
         path.push({x: boat.x, y: boat.y});
         activeBuoys.forEach(b => b.x += VR * dt);
         time += dt;
-
         if (boat.y >= W) { boat.y = W; isRunning = false; }
         updateUI();
     }
 
     function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const startY = canvas.height - 80; 
-        const endY = startY - (W * MTP);
-        const originX = canvas.width / 4;
+        ctx.save(); ctx.scale(dpr, dpr); ctx.clearRect(0, 0, canvas.width/dpr, canvas.height/dpr);
+        const cW = canvas.width/dpr, cH = canvas.height/dpr, originX = cW / 3; 
+        const endY = (cH * 0.15) / 2, startY = endY + (W * MTP);
+        const bankHeight = cH - startY;
+        bankControls.style.top = (startY + (bankHeight / 2) - 22) + "px";
 
-        // Banks
-        ctx.fillStyle = "#d2b48c";
-        ctx.fillRect(0, startY, canvas.width, 80); 
-        ctx.fillRect(0, 0, canvas.width, endY); 
+        ctx.fillStyle = "#d2b48c"; ctx.fillRect(0, startY, cW, bankHeight); ctx.fillRect(0, 0, cW, endY); 
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.1)"; ctx.setLineDash([]); ctx.lineWidth = 1;
+        for (let i = 0; i <= W; i += 5) {
+            const gy = startY - i * MTP; ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(cW, gy); ctx.stroke();
+        }
+        for (let j = Math.floor(-originX/MTP/10)*10; j <= Math.ceil((cW-originX)/MTP/10)*10; j += 10) {
+            const gx = originX + j * MTP; ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, cH); ctx.stroke();
+        }
 
-        // Trace
-        ctx.setLineDash([5, 5]);
-        ctx.strokeStyle = "rgba(255, 0, 0, 0.6)";
-        ctx.beginPath();
+        ctx.setLineDash([5, 5]); ctx.strokeStyle = "rgba(255, 0, 0, 0.6)"; ctx.lineWidth = 2; ctx.beginPath();
         path.forEach((p, i) => {
-            const px = originX + p.x * MTP;
-            const py = startY - p.y * MTP;
+            const px = originX + p.x * MTP, py = startY - p.y * MTP;
             if(i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
         });
-        ctx.stroke();
-        ctx.setLineDash([]);
+        ctx.stroke(); ctx.setLineDash([]);
+        drawArrow(originX, startY, originX + 2*MTP, startY, "black", "X", 10);
+        drawArrow(originX, startY, originX, startY - 2*MTP, "black", "Y", 10);
 
-        // Axes (4m)
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 2;
-        drawArrow(originX, startY, originX + 4*MTP, startY, "black", "X");
-        drawArrow(originX, startY, originX, startY - 4*MTP, "black", "Y");
-
-        // Buoys
         activeBuoys.forEach(b => {
-            const bx = originX + b.x * MTP;
-            const by = startY - b.y * MTP;
-            ctx.fillStyle = b.color;
-            ctx.beginPath(); ctx.arc(bx, by, 5, 0, 7); ctx.fill();
-            ctx.font = "bold 12px Arial";
-            ctx.fillText(b.label, bx - 4, by - 12);
+            const bx = originX + b.x * MTP, by = startY - b.y * MTP;
+            ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(bx, by, 6, 0, 7); ctx.fill();
+            ctx.fillStyle = "black"; ctx.font = "bold 12px Arial"; ctx.fillText(b.label, bx - 4, by - 12);
         });
 
-        // Boat
-        ctx.save();
-        ctx.translate(originX + boat.x * MTP, startY - boat.y * MTP);
+        ctx.save(); 
+        ctx.translate(originX + boat.x * MTP, startY - boat.y * MTP); 
         ctx.rotate((thetaDeg * Math.PI) / 180);
-        ctx.fillStyle = "#5d4037";
-        ctx.beginPath(); ctx.moveTo(0,-15); ctx.lineTo(8,10); ctx.lineTo(-8,10); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = "red"; ctx.beginPath(); ctx.arc(0,0,2.5,0,7); ctx.fill(); 
+        
+        const bW = MTP * 0.7; 
+        const bH = MTP * 1.8; 
+        
+        ctx.fillStyle = "#5d4037"; 
+        ctx.beginPath();
+        ctx.moveTo(0, -bH/2 - bH/4); 
+        ctx.lineTo(bW, -bH/4);
+        ctx.lineTo(bW, bH/2);
+        ctx.lineTo(-bW, bH/2);
+        ctx.lineTo(-bW, -bH/4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "#3e2723";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = "#d7ccc8";
+        ctx.fillRect(-bW/2, -bH/8, bW, bH/3);
+
+        ctx.fillStyle = "red";
+        ctx.beginPath();
+        ctx.arc(0, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
         ctx.restore();
 
-        drawVectorPanel();
+        drawVectorPanel(cW, cH, startY); ctx.restore();
     }
 
-    function drawVectorPanel() {
-        const pW = 260, pH = 150;
-        const pX = canvas.width - pW - 10, pY = canvas.height - pH - 10;
+    function drawVectorPanel(cW, cH, startY) {
+        const isMobile = window.innerWidth < 768;
+        const pW = isMobile ? 150 : 220, pH = isMobile ? 100 : 130;
+        const pX = cW - pW - 15, pY = startY - pH;
         ctx.fillStyle = "rgba(255,255,255,0.9)";
-        ctx.fillRect(pX, pY, pW, pH);
-        ctx.strokeRect(pX, pY, pW, pH);
-
-        const ox = pX + 40, oy = pY + 110, s = 20;
-        const rad = (thetaDeg * Math.PI) / 180;
-        const vbrx = vBR*Math.sin(rad)*s, vbry = -vBR*Math.cos(rad)*s, vrx = VR*s;
-
-        drawArrow(ox, oy, ox + vrx, oy, "blue", "vR");
-        drawArrow(ox, oy, ox + vbrx, oy + vbry, "red", "vBR", -15);
-        drawArrow(ox, oy, ox + vbrx + vrx, oy + vbry, "green", "vBG", 15);
+        ctx.lineWidth = 1; ctx.strokeRect(pX, pY, pW, pH); ctx.fillRect(pX, pY, pW, pH);
+        const ox = pX + (pW * 0.3), oy = pY + pH - 25, s = isMobile ? 12 : 18;
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.1)";
+        for (let v = 0; oy - v * s >= pY; v++) { ctx.beginPath(); ctx.moveTo(pX, oy - v * s); ctx.lineTo(pX + pW, oy - v * s); ctx.stroke(); }
+        for (let v = 1; oy + v * s <= pY + pH; v++) { ctx.beginPath(); ctx.moveTo(pX, oy + v * s); ctx.lineTo(pX + pW, oy + v * s); ctx.stroke(); }
+        const rad = (thetaDeg * Math.PI) / 180, vbrx = vBR*Math.sin(rad)*s, vbry = -vBR*Math.cos(rad)*s, vrx = VR*s;
+        drawArrow(ox, oy, ox + vrx, oy, "blue", "vR", 5); drawArrow(ox, oy, ox + vbrx, oy + vbry, "red", "vBR", -10); drawArrow(ox, oy, ox + vbrx + vrx, oy + vbry, "green", "vBG", 10);
     }
 
-    function drawArrow(x1, y1, x2, y2, color, label, labelOffset = 10) {
+    function drawArrow(x1, y1, x2, y2, color, label, labelOffset) {
         const head = 8, angle = Math.atan2(y2-y1, x2-x1);
         ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
         ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x2,y2);
         ctx.lineTo(x2-head*Math.cos(angle-0.5), y2-head*Math.sin(angle-0.5));
         ctx.lineTo(x2-head*Math.cos(angle+0.5), y2-head*Math.sin(angle+0.5)); ctx.fill();
-        ctx.fillStyle = "#000"; ctx.fillText(label, x2 + Math.cos(angle)*labelOffset, y2 + Math.sin(angle)*labelOffset);
+        ctx.fillStyle = "#000"; const lx = x2 + Math.cos(angle) * labelOffset, ly = y2 + Math.sin(angle) * labelOffset;
+        if (label.startsWith('v') && label.length > 1) {
+            const mainText = 'v', subText = label.substring(1);
+            ctx.font = "italic bold 14px Arial"; ctx.fillText(mainText, lx, ly);
+            const vWidth = ctx.measureText(mainText).width;
+            ctx.font = "bold 10px Arial"; ctx.fillText(subText, lx + vWidth, ly + 4);
+        } else { ctx.font = "bold 12px Arial"; ctx.fillText(label, lx, ly); }
     }
 
     function updateUI() {
@@ -299,37 +333,52 @@
         document.getElementById('theta-val').textContent = thetaDeg + "°";
     }
 
-    // Guide Navigation
-    function updateGuide() {
-        document.getElementById('guide-text').textContent = guidanceMessages[guideIndex];
+    function updateModeDisplay() {
+        const textDisplay = document.getElementById('guide-text');
+        const guideBtn = document.getElementById('btn-guide');
+        const challengeBtn = document.getElementById('btn-challenge');
+        
+        if (currentMode === 'guide') {
+            guideBtn.classList.add('active'); challengeBtn.classList.remove('active');
+            textDisplay.innerHTML = guideMessages[guideIndex];
+        } else {
+            challengeBtn.classList.add('active'); guideBtn.classList.remove('active');
+            textDisplay.innerHTML = challengeMessages[challengeIndex];
+        }
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            MathJax.typesetPromise([textDisplay]).catch((err) => console.log(err.message));
+        }
     }
 
+    document.getElementById('btn-guide').onclick = () => { currentMode = 'guide'; updateModeDisplay(); };
+    document.getElementById('btn-challenge').onclick = () => { currentMode = 'challenge'; updateModeDisplay(); };
     document.getElementById('next-guide').onclick = () => {
-        guideIndex = (guideIndex + 1) % guidanceMessages.length;
-        updateGuide();
+        if (currentMode === 'guide') guideIndex = (guideIndex + 1) % guideMessages.length;
+        else challengeIndex = (challengeIndex + 1) % challengeMessages.length;
+        updateModeDisplay();
     };
-
     document.getElementById('prev-guide').onclick = () => {
-        guideIndex = (guideIndex - 1 + guidanceMessages.length) % guidanceMessages.length;
-        updateGuide();
+        if (currentMode === 'guide') guideIndex = (guideIndex - 1 + guideMessages.length) % guideMessages.length;
+        else challengeIndex = (challengeIndex - 1 + challengeMessages.length) % challengeMessages.length;
+        updateModeDisplay();
     };
 
-    // Controls listeners
     document.getElementById('vbr-slider').oninput = (e) => { vBR = +e.target.value; reset(); };
     document.getElementById('theta-slider').oninput = (e) => { thetaDeg = +e.target.value; reset(); };
-    document.getElementById('time-scale').onchange = (e) => { timeScale = +e.target.value; };
-    document.getElementById('play-btn').onclick = () => { 
-        if (!isRunning && boat.y >= W) reset();
-        isRunning = !isRunning; 
-        document.getElementById('play-btn').textContent = isRunning ? "PAUSE" : "PLAY"; 
-    };
+    document.getElementById('play-btn').onclick = () => { if (!isRunning && boat.y >= W) reset(); isRunning = !isRunning; document.getElementById('play-btn').textContent = isRunning ? "PAUSE" : "PLAY"; };
     document.getElementById('reset-btn').onclick = reset;
 
-    window.onresize = () => { canvas.width = container.clientWidth; canvas.height = container.clientHeight; reset(); };
+    window.onresize = () => {
+        const rect = container.getBoundingClientRect();
+        canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+        canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
+        const isMobile = window.innerWidth < 768;
+        MTP = isMobile ? (rect.width / 18) : (rect.height / 35); 
+        reset();
+    };
     
-    // Init
-    updateGuide();
-    window.onresize();
+    updateModeDisplay(); window.onresize();
     function loop() { update(); draw(); requestAnimationFrame(loop); }
     loop();
 </script>
