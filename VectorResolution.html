@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Resolution: JEE/NEET Primer</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        :root {
+            --primary-bg: #fdfdfd;
+            --grid-line: #e0e0e0;
+            --vector-color: #000000;
+            --i-color: #ff7675;
+            --j-color: #74b9ff;
+            --panel-bg: #f1f2f6;
+            --param-box-bg: #2d3436; 
+            --param-text: #ffffff;
+            --instr-bg: #ffffff;
+            --success: #2ecc71;
+            --error: #e74c3c;
+        }
+
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: var(--primary-bg); height: 100vh; overflow: hidden; }
+        .hidden { display: none !important; }
+
+        /* --- HOME SCREEN --- */
+        #home-screen { display: flex; justify-content: center; align-items: center; height: 100vh; padding: 15px; box-sizing: border-box; }
+        .home-container { max-width: 550px; width: 100%; background: white; padding: 1.2rem; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 5px solid var(--success); }
+        .home-container h1 { font-size: 1.3rem; text-align: center; margin: 0 0 0.8rem 0; }
+        .home-container h2 { font-size: 1rem; color: var(--j-color); margin: 0.8rem 0 0.4rem 0; border-bottom: 1px solid #eee; }
+        .home-container p, .home-container li { font-size: 0.85rem; line-height: 1.4; margin: 0.3rem 0; }
+        .menu-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 1.2rem; }
+        .btn-main { padding: 10px 5px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: white; text-align: center; font-size: 0.85rem; }
+
+        /* --- APP WORKBENCH --- */
+        #app-workbench { display: flex; height: 100vh; width: 100%; }
+        @media (max-width: 768px) {
+            #app-workbench { flex-direction: column; overflow-y: auto; }
+            .side-panel { width: 100% !important; border-right: none !important; border-bottom: 2px solid #dfe6e9; height: auto !important; }
+            .main-display { height: 420px; flex-shrink: 0; }
+        }
+
+        .side-panel { width: 320px; background-color: var(--panel-bg); border-right: 2px solid #dfe6e9; padding: 15px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; }
+        .nav-links { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem; font-weight: bold; }
+        .nav-link { cursor: pointer; color: #2d3436; text-decoration: none; border-bottom: 2px solid transparent; transition: 0.2s; }
+        .nav-link:hover { border-bottom: 2px solid var(--param-box-bg); }
+
+        .param-container { background: var(--param-box-bg); color: var(--param-text); padding: 12px; border-radius: 8px; }
+        .param-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.95rem; font-weight: bold; align-items: center; }
+        .instruction-pane { background: var(--instr-bg); border: 1px solid #ccc; border-radius: 8px; padding: 12px; min-height: 70px; font-size: 0.9rem; color: #2d3436; font-weight: 500; }
+        
+        input[type="number"] { width: 60px; padding: 5px; border-radius: 4px; border: none; font-weight: bold; text-align: center; }
+        .divider { border: 0; border-top: 1px solid #636e72; margin: 8px 0; }
+        .vec-ref { position: relative; display: inline-block; padding-top: 4px; }
+        .vec-ref::before { content: "→"; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); font-size: 0.8em; }
+
+        .controls { display: flex; justify-content: center; gap: 12px; margin-top: auto; padding-top: 8px; }
+        .nav-btn { width: 45px; height: 35px; cursor: pointer; border: none; border-radius: 4px; background: #2d3436; color: white; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; }
+        .wide-btn { flex-grow: 1; padding: 12px; font-weight: bold; cursor: pointer; border: none; border-radius: 4px; background: #2d3436; color: white; }
+
+        /* --- VISUALIZER --- */
+        .main-display { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; background: white; }
+        #visualizer-box { position: relative; width: 95%; max-width: 400px; aspect-ratio: 1/1; background: white; border: 1.5px solid #000; }
+        #orientation-msg { position: absolute; bottom: 12px; width: 100%; text-align: center; color: #7f8c8d; font-size: 0.8rem; font-weight: bold; visibility: hidden; }
+
+        /* --- OVERLAY --- */
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.98); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+        table { width: 100%; max-width: 450px; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #eee; padding: 10px; text-align: center; font-size: 0.85rem; }
+        th { background: #2d3436; color: white; }
+
+        svg { width: 100%; height: 100%; }
+        .svg-label { font-family: 'Times New Roman', serif; font-style: italic; font-weight: bold; font-size: 0.6px; pointer-events: none; }
+        #traveler-dot { transition: all 0.6s ease-in-out; }
+    </style>
+</head>
+<body>
+
+    <div id="home-screen">
+        <div class="home-container">
+            <h1>Vector Resolution Primer</h1>
+            <p><strong>Objective:</strong> Develop an intuitive understanding of orthogonal components for JEE/NEET mechanics.</p>
+            
+            <h2>Prerequisites</h2>
+            <ul style="padding-left: 1.2rem; margin: 0;">
+                <li>Graphical representation of vectors.</li>
+                <li>Properties of unit vectors \(\hat{i}\) and \(\hat{j}\).</li>
+                <li>Head-to-tail addition and subtraction methods.</li>
+            </ul>
+
+            <h2>Sign Convention</h2>
+            <div style="background:#f1f2f6; padding:6px; display:flex; justify-content:space-around; font-size:0.85rem; border-radius:4px;">
+                <span>Rightward: <b>+\(\hat{i}\)</b></span> <span>Upward: <b>+\(\hat{j}\)</b></span>
+            </div>
+
+            <div class="menu-options">
+                <button class="btn-main" style="background:var(--j-color)" onclick="startApp('revision')">Revision</button>
+                <button class="btn-main" style="background:var(--success)" onclick="startApp('quiz')">Quiz</button>
+                <button class="btn-main" style="background:#636e72" onclick="startApp('sprint')">Sprint</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-workbench" class="hidden">
+        <div class="side-panel">
+            <div class="nav-links">
+                <span id="header-tag">MODE</span>
+                <span class="nav-link" onclick="location.reload()">🏠 HOME</span>
+            </div>
+            
+            <div id="mode-switcher" style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.8rem;">
+                <span class="nav-link" style="color:var(--j-color)" onclick="startApp('revision')">📖 Revision</span>
+                <span class="nav-link" style="color:var(--success)" onclick="startApp('quiz')">📝 Quiz</span>
+                <span class="nav-link" style="color:#636e72" onclick="startApp('sprint')">⚡ Sprint</span>
+            </div>
+
+            <div class="param-container" id="param-ui"></div>
+            <div class="instruction-pane" id="guide-text"></div>
+            <div class="controls" id="control-ui"></div>
+        </div>
+
+        <div class="main-display">
+            <div id="visualizer-box">
+                <svg viewBox="-5.5 -5.5 11 11" id="grid-svg">
+                    <g id="grid-lines" stroke="var(--grid-line)" stroke-width="0.02"></g>
+                    <line x1="-5.5" y1="0" x2="5.5" y2="0" stroke="#000" stroke-width="0.04" />
+                    <line x1="0" y1="-5.5" x2="0" y2="5.5" stroke="#000" stroke-width="0.04" />
+                    <defs>
+                        <marker id="arr-i" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><polygon points="0 0, 6 3, 0 6" fill="var(--i-color)" /></marker>
+                        <marker id="arr-j" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><polygon points="0 0, 6 3, 0 6" fill="var(--j-color)" /></marker>
+                        <marker id="arr-main" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><polygon points="0 0, 6 3, 0 6" fill="black" /></marker>
+                    </defs>
+                    <line id="path-i" stroke="var(--i-color)" stroke-width="0.08" marker-end="url(#arr-i)" visibility="hidden" />
+                    <text id="label-vx" class="svg-label" style="fill:var(--i-color)" visibility="hidden">Vₓ</text>
+                    <line id="path-j" stroke="var(--j-color)" stroke-width="0.08" marker-end="url(#arr-j)" visibility="hidden" />
+                    <text id="label-vy" class="svg-label" style="fill:var(--j-color)" visibility="hidden">Vᵧ</text>
+                    <line id="vec-v" stroke="black" stroke-width="0.1" marker-end="url(#arr-main)" />
+                    <g id="v-label-group">
+                        <text class="svg-label">V</text>
+                        <line x1="-0.15" y1="-0.65" x2="0.25" y2="-0.65" stroke="black" stroke-width="0.06" />
+                        <path d="M 0.1 -0.75 L 0.25 -0.65 L 0.1 -0.55" fill="none" stroke="black" stroke-width="0.06" />
+                    </g>
+                    <circle id="traveler-dot" r="0.15" fill="#f39c12" stroke="#d35400" stroke-width="0.05" visibility="hidden" />
+                </svg>
+                <div id="orientation-msg"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <div id="countdown-area">
+            <h2 id="sprint-msg" style="text-align:center">10 Questions Sprint</h2>
+            <div id="countdown-text" style="font-size:6rem; font-weight:bold; text-align:center;">5</div>
+        </div>
+        <div id="results-container" class="hidden">
+            <h2 style="margin-top:0">Sprint Results</h2>
+            <table id="results-table">
+                <thead><tr><th>Q</th><th>Time</th><th>Status</th></tr></thead>
+                <tbody id="results-body"></tbody>
+            </table>
+            <button class="wide-btn" onclick="location.reload()">HOME PAGE</button>
+        </div>
+    </div>
+
+<script>
+    let currentMode = '';
+    let step = 0;
+    let v = { x1: 0, y1: 0, x2: 0, y2: 0, dx: 0, dy: 0 };
+    let sprintResults = [];
+    let qStartTime;
+
+    function startApp(mode) {
+        currentMode = mode;
+        step = 0;
+        sprintResults = [];
+        document.getElementById('home-screen').classList.add('hidden');
+        document.getElementById('app-workbench').classList.remove('hidden');
+        document.getElementById('overlay').style.display = 'none';
+        document.getElementById('results-container').classList.add('hidden');
+        
+        initGrid();
+        if(mode === 'revision') {
+            document.getElementById('header-tag').innerText = "REVISION";
+            setupRevisionUI();
+            newVector();
+        } else if(mode === 'quiz') {
+            document.getElementById('header-tag').innerText = "QUIZ";
+            setupQuizUI();
+            newVector();
+        } else if(mode === 'sprint') {
+            document.getElementById('header-tag').innerText = "SPRINT (1/10)";
+            document.getElementById('overlay').style.display = 'flex';
+            document.getElementById('countdown-area').style.display = 'block';
+            document.getElementById('countdown-text').innerText = "5";
+            setupSprintUI();
+            startSprintCountdown();
+        }
+    }
+
+    function initGrid() {
+        const g = document.getElementById('grid-lines');
+        let lines = '';
+        for(let i = -5; i <= 5; i++) {
+            lines += `<line x1="-5.5" y1="${i}" x2="5.5" y2="${i}" />`;
+            lines += `<line x1="${i}" y1="-5.5" x2="${i}" y2="5.5" />`;
+        }
+        g.innerHTML = lines;
+    }
+
+    function newVector() {
+        const rand = () => Math.floor(Math.random() * 9) - 4;
+        v.x1 = rand(); v.y1 = rand();
+        do { v.x2 = rand(); v.y2 = rand(); } while (Math.abs(v.x2 - v.x1) < 2 && Math.abs(v.y2 - v.y1) < 2);
+        v.dx = v.x2 - v.x1; v.dy = v.y2 - v.y1;
+        step = 0;
+        updateSVG();
+        if(currentMode === 'revision') changeStep(0);
+        qStartTime = Date.now();
+    }
+
+    function updateSVG() {
+        document.getElementById('vec-v').setAttribute('x1', v.x1); 
+        document.getElementById('vec-v').setAttribute('y1', -v.y1);
+        document.getElementById('vec-v').setAttribute('x2', v.x2); 
+        document.getElementById('vec-v').setAttribute('y2', -v.y2);
+        const offX = v.dx >= 0 ? 0.7 : -0.9, offY = v.dy >= 0 ? -0.8 : 0.9;
+        document.getElementById('v-label-group').setAttribute('transform', `translate(${v.x2 + offX}, ${-v.y2 + offY})`);
+        document.getElementById('path-i').setAttribute('x1', v.x1); document.getElementById('path-i').setAttribute('y1', -v.y1);
+        document.getElementById('path-i').setAttribute('x2', v.x2); document.getElementById('path-i').setAttribute('y2', -v.y1);
+        document.getElementById('label-vx').setAttribute('x', (v.x1 + v.x2)/2); document.getElementById('label-vx').setAttribute('y', -v.y1 + (v.dy > 0 ? 0.6 : -0.4));
+        document.getElementById('path-j').setAttribute('x1', v.x2); document.getElementById('path-j').setAttribute('y1', -v.y1);
+        document.getElementById('path-j').setAttribute('x2', v.x2); document.getElementById('path-j').setAttribute('y2', -v.y2);
+        document.getElementById('label-vy').setAttribute('x', v.x2 + (v.dx > 0 ? 0.4 : -1.0)); document.getElementById('label-vy').setAttribute('y', -(v.y1 + v.y2)/2);
+        document.getElementById('traveler-dot').setAttribute('cx', v.x1); document.getElementById('traveler-dot').setAttribute('cy', -v.y1);
+        toggleVis('hidden', 'hidden', 'hidden');
+        document.getElementById('orientation-msg').style.visibility = 'hidden';
+    }
+
+    function setupRevisionUI() {
+        document.getElementById('param-ui').innerHTML = `<div class="param-row"><span>Comp (î):</span> <span id="val-i">?</span></div><div class="param-row"><span>Comp (ĵ):</span> <span id="val-j">?</span></div><hr class="divider"><div class="param-row"><span>Vector (<span class="vec-ref">V</span>):</span> <span id="val-res">?</span></div>`;
+        document.getElementById('control-ui').innerHTML = `<button id="prevBtn" class="nav-btn" onclick="changeStep(-1)" disabled>&#9664;</button><button id="nextBtn" class="nav-btn" onclick="changeStep(1)">&#9654;</button>`;
+    }
+
+    function setupQuizUI() {
+        document.getElementById('param-ui').innerHTML = `<div class="param-row"><span>Comp (î):</span> <input type="number" id="input-i" placeholder="±Vx"></div><div class="param-row"><span>Comp (ĵ):</span> <input type="number" id="input-j" placeholder="±Vy"></div><hr class="divider"><div class="param-row"><span>Vector (<span class="vec-ref">V</span>):</span> <span id="ans-vec">?</span></div>`;
+        document.getElementById('control-ui').innerHTML = `<button id="actionBtn" class="wide-btn" onclick="checkQuiz()">CHECK ANSWER</button>`;
+        document.getElementById('guide-text').innerText = "Solve for components and click Check.";
+    }
+
+    function setupSprintUI() {
+        document.getElementById('param-ui').innerHTML = `<div class="param-row"><span>Comp (î):</span> <input type="number" id="input-i"></div><div class="param-row"><span>Comp (ĵ):</span> <input type="number" id="input-j"></div><hr class="divider"><div class="param-row"><span>Vector (<span class="vec-ref">V</span>):</span> <span id="ans-vec">?</span></div>`;
+        document.getElementById('control-ui').innerHTML = `<button class="wide-btn" onclick="submitSprint()">NEXT QUESTION</button>`;
+        document.getElementById('guide-text').innerText = "Speed is vital. Intermediate feedback is disabled.";
+    }
+
+    async function changeStep(dir) {
+        step += dir; const dot = document.getElementById('traveler-dot');
+        if(step === 0) { updateSVG(); setRevUI('?', '?', '?', "Travel tail-to-head: observe the horizontal path first."); }
+        else if(step === 1) { setRevUI('?', '?', '?', "Imagine travelling from tail to head: first horizontally and then vertically."); }
+        else if(step === 2) { dot.setAttribute('visibility', 'visible'); dot.setAttribute('cx', v.x2); setRevUI('?', '?', '?', "Moving horizontally to find the x-displacement..."); }
+        else if(step === 3) { toggleVis('visible', 'hidden', 'visible'); setRevUI(v.dx, '?', '?', `Horizontal component: <b>${v.dx} î</b>.`); }
+        else if(step === 4) { dot.setAttribute('cy', -v.y2); setRevUI(v.dx, '?', '?', "Now travelling vertically to reach the head of the vector..."); }
+        else if(step === 5) { toggleVis('visible', 'visible', 'visible'); setRevUI(v.dx, v.dy, '?', `Vertical component: <b>${v.dy} ĵ</b>.`); }
+        else if(step === 6) { setRevUI(v.dx, v.dy, `${v.dx}î ${v.dy >=0 ? '+':''}${v.dy}ĵ`, "Vector V is the sum of these orthogonal components."); showOrient(v.dx, v.dy); document.getElementById('nextBtn').innerHTML = "&#8634;"; }
+        else { newVector(); document.getElementById('nextBtn').innerHTML = "&#9654;"; }
+        document.getElementById('prevBtn').disabled = (step === 0);
+    }
+
+    function setRevUI(i, j, res, text) { document.getElementById('val-i').innerText = i; document.getElementById('val-j').innerText = j; document.getElementById('val-res').innerText = res; document.getElementById('guide-text').innerHTML = text; }
+
+    async function checkQuiz() {
+        const ui = parseInt(document.getElementById('input-i').value), uj = parseInt(document.getElementById('input-j').value);
+        if(isNaN(ui) || isNaN(uj)) return; document.getElementById('actionBtn').disabled = true;
+        const dot = document.getElementById('traveler-dot'); dot.setAttribute('visibility', 'visible');
+        await wait(200); dot.setAttribute('cx', v.x2); await wait(600); toggleVis('visible', 'hidden', 'visible');
+        await wait(400); dot.setAttribute('cy', -v.y2); await wait(600); toggleVis('visible', 'visible', 'visible');
+        const isR = (ui === v.dx && uj === v.dy); document.getElementById('guide-text').innerHTML = isR ? "<b style='color:var(--success)'>✔ Correct!</b>" : "<b style='color:var(--error)'>✘ Incorrect</b>";
+        document.getElementById('ans-vec').innerText = `${v.dx}î ${v.dy >=0 ? '+':''}${v.dy}ĵ`; showOrient(v.dx, v.dy);
+        document.getElementById('control-ui').innerHTML = `<button class="wide-btn" onclick="newQuizQ()">NEXT QUESTION</button>`;
+    }
+
+    function newQuizQ() { setupQuizUI(); newVector(); }
+
+    function startSprintCountdown() {
+        let count = 5; const timer = setInterval(() => {
+            count--; if(count > 0) document.getElementById('countdown-text').innerText = count;
+            else { clearInterval(timer); document.getElementById('overlay').style.display = 'none'; document.getElementById('countdown-area').style.display = 'none'; newVector(); }
+        }, 1000);
+    }
+
+    function submitSprint() {
+        const ui = parseInt(document.getElementById('input-i').value), uj = parseInt(document.getElementById('input-j').value);
+        if(isNaN(ui) || isNaN(uj)) return;
+        sprintResults.push({ q: sprintResults.length + 1, time: ((Date.now() - qStartTime)/1000).toFixed(1), correct: (ui === v.dx && uj === v.dy) });
+        if(sprintResults.length < 10) { document.getElementById('header-tag').innerText = `SPRINT (${sprintResults.length + 1}/10)`; document.getElementById('input-i').value = ''; document.getElementById('input-j').value = ''; newVector(); }
+        else { finishSprint(); }
+    }
+
+    function finishSprint() {
+        const overlay = document.getElementById('overlay'); overlay.style.display = 'flex'; overlay.style.justifyContent = 'flex-start';
+        document.getElementById('results-container').classList.remove('hidden');
+        document.getElementById('results-body').innerHTML = sprintResults.map(r => `<tr><td>${r.q}</td><td>${r.time}s</td><td style="color:${r.correct ? 'var(--success)':'var(--error)'}">${r.correct ? '✔':'✘'}</td></tr>`).join('');
+    }
+
+    function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function toggleVis(x, y, d) { document.getElementById('path-i').setAttribute('visibility', x); document.getElementById('label-vx').setAttribute('visibility', x); document.getElementById('path-j').setAttribute('visibility', y); document.getElementById('label-vy').setAttribute('visibility', y); document.getElementById('traveler-dot').setAttribute('visibility', d); }
+    function showOrient(dx, dy) { const msg = document.getElementById('orientation-msg'); msg.innerText = `Visualize the vector as ${dx >= 0 ? 'Rightward' : 'Leftward'} and ${dy >= 0 ? 'Upward' : 'Downward'}`; msg.style.visibility = 'visible'; }
+</script>
+</body>
+</html>
